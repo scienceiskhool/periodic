@@ -1,0 +1,1918 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Periodic Panic</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* Layout: Arcade Punch (light, brand colours) for start and results; dark neon arcade for stage select, stages and boss fights. */
+:root {
+  --orange: #FF8243; --pink: #FFC0CB; --yellow: #FCE883; --teal: #069494; --teal-ink: #057A7A;
+  --orange-tint: #FFE6DA; --pink-tint: #FFEEF1; --yellow-tint: #FEF8D9; --teal-tint: #DDF2F2;
+  --ink: #1F2A2E; --muted: #56656A; --line: #E4E8E9; --bg: #FFFFFF;
+  --good: #1E9E62; --good-tint: #D8F3E4; --bad: #E2463A;
+  --b: 3px solid var(--ink);
+  --font: "Open Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --pixel: "Press Start 2P", ui-monospace, "Courier New", monospace;
+  --night: #0D0B1A; --night-2: #19152E; --night-3: #2A2448;
+  --neon-teal: #2EF2E0; --neon-pink: #FF7FB0; --neon-yellow: #FCE883; --neon-orange: #FF8243; --neon-red: #FF4D5E; --neon-green: #4CF08A;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body {
+  font: 16px/1.5 var(--font); min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  transition: background .3s;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+.sub { font-size: .68em; position: relative; bottom: -.25em; line-height: 0; }
+sup { font-size: .68em; line-height: 0; position: relative; top: -.1em; vertical-align: super; font-weight: 800; }
+:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+/* ---------- shared pieces ---------- */
+.wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 16px; flex: 1; display: flex; flex-direction: column; }
+.card { background: #fff; border: var(--b); border-radius: 22px; box-shadow: 6px 6px 0 var(--ink); }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: var(--b); border-radius: 16px; padding: 14px 18px; font-weight: 800; font-size: 1.1rem;
+  background: var(--orange); color: var(--ink); box-shadow: 0 5px 0 var(--ink);
+  transition: transform .08s, box-shadow .08s; user-select: none; -webkit-user-select: none;
+}
+.btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+.btn.big { width: 100%; font-size: 1.15rem; text-transform: uppercase; letter-spacing: .03em; padding: 16px; }
+.btn.alt { background: #fff; }
+.btn.sm { padding: 9px 14px; font-size: .95rem; border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
+.pill { display: inline-block; font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; border: 2px solid var(--ink); border-radius: 99px; padding: 2px 10px; background: #fff; }
+.icon-btn { width: 42px; height: 42px; border-radius: 12px; border: var(--b); background: #fff; display: grid; place-items: center; box-shadow: 0 3px 0 var(--ink); padding: 0; flex: none; }
+.icon-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn.off { opacity: .45; }
+
+/* ---------- top bar ---------- */
+.topbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 2px solid var(--line); background: #fff; }
+.topbar .brand { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; text-decoration: none; color: var(--ink); }
+.topbar .brand img { width: 38px; height: 38px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--yellow); object-fit: cover; flex: none; }
+.topbar .brand b { font-weight: 800; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.topbar .brand small { display: block; font-size: .72rem; color: var(--muted); font-weight: 600; line-height: 1.2; }
+body.playing .topbar { padding: 6px 12px; }
+body.playing .topbar .brand img { width: 30px; height: 30px; }
+body.playing .icon-btn { width: 36px; height: 36px; }
+body.playing footer { display: none; }
+body.playing .wrap { padding: 8px 12px 10px; }
+
+/* ---------- start screen ---------- */
+.start { display: grid; gap: 22px; grid-template-columns: 1fr; align-items: start; margin: auto 0; padding-block: 8px 20px; }
+.hero { background: var(--teal); color: #fff; padding: 22px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; }
+.hero h1 { margin: 6px 0 0; font-size: clamp(2rem, 7vw, 3rem); line-height: 1.05; font-weight: 800; letter-spacing: -.01em; text-wrap: balance; }
+.hero h1 em { font-style: normal; background: var(--yellow); color: var(--ink); border: var(--b); border-radius: 14px; padding: 0 10px; display: inline-block; transform: rotate(-2deg); }
+.hero p { margin: 0; max-width: 40ch; font-weight: 600; }
+.hero .pill { color: var(--ink); align-self: flex-start; }
+.hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hero-title { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; min-width: 0; }
+.hero .cast { width: clamp(110px, 30vw, 170px); height: auto; flex: none; object-fit: contain; image-rendering: auto; filter: drop-shadow(4px 4px 0 rgba(31,42,46,.35)); margin: -6px -4px -10px 0; }
+.demo { background: #fff; color: var(--ink); border: var(--b); border-radius: 16px; padding: 12px 14px; font-weight: 700; display: flex; flex-direction: column; gap: 8px; font-size: .95rem; }
+.demo small { font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--teal-ink); }
+.mmap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mmap .q { background: var(--yellow-tint); border: 2px solid var(--ink); border-radius: 10px; padding: 2px 8px; white-space: nowrap; }
+.mmap .q.mol { background: var(--yellow); }
+.mmap .op { font-size: .8rem; color: var(--teal-ink); font-weight: 800; white-space: nowrap; }
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mode-card { padding: 12px; border: var(--b); border-radius: 16px; background: var(--yellow-tint); color: var(--ink); }
+.mode-card.dark { background: var(--night); color: #fff; }
+.mode-card b { display: block; font-weight: 800; }
+.mode-card.dark b { font-family: var(--pixel); font-size: .72rem; color: var(--neon-yellow); line-height: 1.6; }
+.mode-card span { font-size: .85rem; display: block; line-height: 1.4; margin-top: 4px; }
+.form { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.form h2 { margin: 0; font-size: 1.25rem; font-weight: 800; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fields .full { grid-column: 1 / -1; }
+label.f { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-size: .9rem; }
+label.f input, label.f select { font-size: 16px; padding: 12px; border: 2.5px solid var(--ink); border-radius: 12px; background: #fff; width: 100%; min-width: 0; }
+label.f input:focus, label.f select:focus { outline: 3px solid var(--yellow); outline-offset: 1px; }
+.grp { display: flex; flex-direction: column; gap: 6px; }
+.grp > span { font-weight: 700; font-size: .9rem; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.chip { border: 2.5px solid var(--ink); border-radius: 12px; background: #fff; padding: 8px 12px; font-weight: 700; font-size: .9rem; box-shadow: 0 3px 0 var(--ink); }
+.chip[aria-pressed="true"] { background: var(--yellow); }
+.seg .chip { text-align: center; }
+.seg .chip small { display: block; font-weight: 600; font-size: .75rem; color: var(--muted); }
+.form-err { color: var(--bad); font-weight: 700; font-size: .9rem; min-height: 1.2em; margin: -4px 0 0; }
+.btn.boss-btn { background: var(--night); color: var(--neon-yellow); font-family: var(--pixel); font-size: .78rem; line-height: 1.5; }
+.best { display: flex; justify-content: space-between; font-size: .9rem; color: var(--muted); font-weight: 700; }
+.best b { color: var(--ink); }
+.how { margin: 0; padding-left: 1.2em; font-size: .9rem; font-weight: 600; color: var(--muted); }
+@media (min-width: 760px) { .start { grid-template-columns: 1.05fr 1fr; gap: 28px; } }
+@media (max-width: 420px) { .topbar .brand small { display: none; } .topbar .brand b { font-size: .95rem; }
+  .modes { grid-template-columns: 1fr; } .hero .cast { width: 96px; } }
+
+/* ---------- dark arcade (climb + boss) ---------- */
+body.dark { background: var(--night); }
+body.dark .topbar { background: var(--night); border-bottom-color: var(--night-3); }
+body.dark .topbar .brand, body.dark .topbar .brand small { color: #fff; }
+body.dark .icon-btn { background: var(--night-2); border-color: var(--neon-teal); color: var(--neon-teal); box-shadow: 0 3px 0 var(--neon-teal); }
+body.dark footer { color: #8C86A8; }
+body.dark footer a { color: var(--neon-teal); }
+
+/* ---------- climb ---------- */
+.climb { display: flex; flex-direction: column; gap: 8px; color: #fff; flex: 1; min-height: 0; }
+.chud { display: flex; align-items: center; gap: 10px; font-family: var(--pixel); font-size: .58rem; line-height: 1.5; }
+.chud .lv { color: var(--neon-yellow); }
+.chud .lv span { color: var(--neon-teal); display: block; }
+.chud .pts { margin-left: auto; text-align: right; color: #fff; }
+.chud .pts small { display: block; color: var(--neon-pink); font-size: .5rem; }
+.hearts { display: flex; gap: 4px; }
+.hearts svg { width: 22px; height: 20px; }
+.hearts .lost { opacity: .22; }
+.hearts .breaking { animation: heartbreak .6s; }
+@keyframes heartbreak { 0% { transform: scale(1); } 40% { transform: scale(1.5) rotate(-12deg); } 100% { transform: scale(1); } }
+.calc-btn { font-family: var(--pixel); font-size: .55rem; line-height: 1.3; border: 3px solid var(--neon-yellow); background: var(--night-2); color: var(--neon-yellow); border-radius: 6px; padding: 7px 8px; box-shadow: 0 3px 0 var(--neon-orange); display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.calc-btn svg { width: 16px; height: 16px; }
+.calc-btn[aria-pressed="true"] { background: var(--neon-yellow); color: var(--night); }
+.qstrip { border: 3px solid var(--neon-teal); border-radius: 6px; background: var(--night-2); padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; min-height: 92px; }
+.qhead { margin: 0; font-family: var(--pixel); font-size: .62rem; color: var(--neon-yellow); line-height: 1.6; }
+.qtext { margin: 0; font-weight: 700; font-size: 1.25rem; line-height: 1.4; }
+.qtext b { color: var(--neon-yellow); }
+.qeqline { font-weight: 700; font-size: 1.08rem; color: var(--neon-teal); }
+.st { opacity: .75; font-weight: 600; font-size: .85em; }
+.qhint { margin: 0; font-size: 1rem; font-weight: 600; color: #B8B2D6; }
+.crumb { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; font-size: .92rem; font-weight: 700; color: #B8B2D6; }
+.crumb .q { border: 2px solid var(--night-3); border-radius: 6px; padding: 0 6px; color: #fff; white-space: nowrap; }
+.crumb .q.now { border-color: var(--neon-yellow); color: var(--neon-yellow); }
+.cwrap { position: relative; align-self: center; line-height: 0; }
+/* phones and upright iPads: compact question panel and controls so the game screen gets the space */
+@media (max-width: 819px), (max-aspect-ratio: 1/1) {
+  body.playing .topbar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 6px); right: calc(env(safe-area-inset-right, 0px) + 10px); z-index: 20; padding: 0; gap: 6px; border: 0; background: transparent !important; }
+  body.playing .topbar .brand { display: none; }
+  body.playing .chud { padding-right: 116px; min-height: 34px; }
+  body.playing .icon-btn { width: 32px; height: 32px; border-radius: 9px; box-shadow: 0 2px 0 currentColor; }
+  body.playing .icon-btn svg { width: 16px; height: 16px; }
+  body.playing .wrap { padding: 6px 10px 8px; }
+  .climb { gap: 6px; }
+  .chud { font-size: .5rem; gap: 8px; }
+  .chud .hearts svg { width: 18px; height: 16px; }
+  .calc-btn { padding: 5px 7px; font-size: .5rem; }
+  .qstrip { min-height: 0; padding: 6px 10px; gap: 3px; border-width: 2px; }
+  .qhead { font-size: .45rem; }
+  .qtext { font-size: .95rem; line-height: 1.35; }
+  .qeqline { font-size: .85rem; }
+  .qhint { font-size: .8rem; }
+  .crumb { font-size: .75rem; }
+  .toast { font-size: .8rem; padding: 6px 8px; left: 6px; right: 6px; top: 6px; }
+  .pad { gap: 6px; }
+  .pad button { height: 50px; font-size: 1.2rem; box-shadow: 0 3px 0 var(--neon-teal); }
+  .pad .jump { box-shadow: 0 3px 0 var(--neon-orange); }
+  .bq { font-size: 1.05rem; }
+  .qeq { font-size: 1rem; }
+}
+@media (min-width: 600px) and (max-aspect-ratio: 1/1) { /* upright iPad: a bit more room for text */
+  .qtext { font-size: 1.1rem; } .qhint { font-size: .9rem; } .crumb { font-size: .85rem; } .chud { font-size: .58rem; } .pad button { height: 58px; }
+}
+/* laptops and landscape tablets: question panel on the left, big game screen on the right */
+@media (min-width: 820px) and (min-aspect-ratio: 1/1) {
+  body.playing .wrap { max-width: 1500px; }
+  .climb { display: grid; grid-template-columns: minmax(300px, 400px) 1fr; grid-template-rows: auto auto auto auto 1fr;
+    grid-template-areas: "hud game" "q game" "pad game" "keys game" ". game"; column-gap: 20px; row-gap: 12px; align-items: start; }
+  #c-hud { grid-area: hud; flex-wrap: wrap; font-size: .66rem; }
+  #c-hud .hearts svg { width: 26px; height: 24px; }
+  #c-q { grid-area: q; padding: 14px 16px; gap: 8px; }
+  #c-wrap { grid-area: game; justify-self: center; align-self: start; }
+  #pad { grid-area: pad; grid-template-columns: repeat(2, 1fr); }
+  #pad .jump { grid-column: span 2; }
+  .keys { grid-area: keys; text-align: left; line-height: 2.2; }
+  .rotate { display: none !important; }
+}
+#cv { display: block; border: 3px solid var(--neon-teal); border-radius: 6px; background: var(--night); box-shadow: 0 0 0 3px var(--night), 0 0 22px rgba(46,242,224,.3); touch-action: none; }
+.toast { position: absolute; left: 8px; right: 8px; top: 8px; line-height: 1.4; font-weight: 700; font-size: .92rem; padding: 8px 10px; border-radius: 6px; border: 3px solid var(--neon-green); background: rgba(13,11,26,.94); color: #fff; z-index: 3; pointer-events: none; }
+.toast.bad { border-color: var(--neon-red); }
+.toast b { color: var(--neon-green); }
+.toast.bad b { color: var(--neon-red); }
+.cover { position: fixed; inset: 0; background: rgba(13,11,26,.94); overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 24px 18px; line-height: 1.5; z-index: 25; }
+.cover h2 { font-family: var(--pixel); color: var(--neon-yellow); font-size: clamp(1rem, 5vw, 1.5rem); line-height: 1.4; margin: 0; text-shadow: 3px 3px 0 var(--neon-orange); }
+.cover h2.red { color: var(--neon-red); text-shadow: 3px 3px 0 var(--night-3); }
+.cover .lvname { font-family: var(--pixel); font-size: .6rem; color: var(--neon-teal); }
+.cover p { margin: 0; font-weight: 600; max-width: 32ch; font-size: .95rem; }
+.cover ul { margin: 0; padding-left: 1.1em; text-align: left; font-weight: 600; font-size: .9rem; max-width: 34ch; }
+.cover img { width: 90px; height: 90px; object-fit: contain; }
+.cover .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.paused { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); font-family: var(--pixel); font-size: .55rem; line-height: 1.5; color: var(--night); background: var(--neon-yellow); padding: 6px 10px; border: 3px solid var(--night); z-index: 3; white-space: nowrap; }
+.pad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; max-width: 560px; width: 100%; align-self: center; }
+.pad button { height: 60px; border: 3px solid var(--neon-teal); background: var(--night-2); color: var(--neon-teal); border-radius: 10px; box-shadow: 0 4px 0 var(--neon-teal); font-size: 1.4rem; font-weight: 800; touch-action: none; display: grid; place-items: center; padding: 0; }
+.pad button.on { transform: translateY(3px); box-shadow: 0 1px 0 var(--neon-teal); background: var(--night-3); }
+.pad .jump { font-family: var(--pixel); font-size: .6rem; color: var(--night); background: var(--neon-yellow); border-color: var(--neon-yellow); box-shadow: 0 4px 0 var(--neon-orange); }
+.pad .jump.on { background: var(--neon-orange); box-shadow: 0 1px 0 var(--neon-orange); }
+.keys { text-align: center; font-size: .8rem; font-weight: 600; color: #B8B2D6; margin: 0; }
+.keys kbd { font-family: var(--pixel); font-size: .5rem; border: 2px solid var(--night-3); border-radius: 4px; padding: 2px 5px; color: #fff; background: var(--night-2); }
+.rotate { display: none; text-align: center; font-size: .8rem; color: var(--neon-yellow); font-weight: 700; margin: 0; }
+@media (hover: none), (pointer: coarse) { .keys { display: none; } }
+@media (hover: hover) and (pointer: fine) { .pad { display: none; } }
+body.touch .pad { display: grid; } body.touch .keys { display: none; }
+@media (orientation: landscape) and (max-height: 500px) { .rotate { display: block; } }
+
+/* ---------- boss fight ---------- */
+.boss { display: flex; flex-direction: column; gap: 14px; color: #fff; margin-block: 4px 16px; position: relative; }
+.arena { border: 3px solid var(--neon-teal); border-radius: 6px; background: var(--night-2); box-shadow: 0 0 0 3px var(--night), 0 0 22px rgba(46,242,224,.35); overflow: hidden; position: relative; }
+.arena::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 2px, transparent 2px 4px); }
+.bhud { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 12px 0; font-family: var(--pixel); font-size: .62rem; line-height: 1.6; position: relative; z-index: 2; }
+.hp-who { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hp-who.boss-side { align-items: flex-end; text-align: right; flex: 1; }
+.hpbar { width: min(220px, 100%); height: 16px; border: 3px solid #fff; background: var(--night); padding: 2px; }
+.hpbar i { display: block; height: 100%; background: var(--neon-pink); width: 100%; transition: width .45s steps(8); }
+.hpbar i.low { background: var(--neon-red); }
+.bname { color: var(--neon-pink); }
+.hname { color: var(--neon-teal); }
+.stage { position: relative; height: 210px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 6% 18px; }
+.stage::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background:
+  repeating-linear-gradient(90deg, rgba(46,242,224,.35) 0 2px, transparent 2px 40px), linear-gradient(var(--night-3), var(--night)); border-top: 2px solid var(--neon-teal); }
+.stars { position: absolute; inset: 0; background-image: radial-gradient(1.5px 1.5px at 12% 20%, #fff 50%, transparent 51%), radial-gradient(1.5px 1.5px at 38% 12%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 62% 28%, #fff 50%, transparent 51%), radial-gradient(1.5px 1.5px at 84% 10%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 92% 34%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 24% 40%, #fff 50%, transparent 51%); opacity: .7; }
+.sprite { position: relative; z-index: 1; image-rendering: pixelated; }
+.sprite svg, .sprite img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.hero-sp.pic { width: 100px; height: 118px; }
+.mon-sp.pic { width: 150px; height: 150px; }
+.sprite.pic img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; image-rendering: auto; }
+.mon-sp img { transform: scaleX(-1); }
+.hero-sp { width: 86px; animation: bob 1s steps(2) infinite; }
+.mon-sp { width: 140px; animation: bob 1.4s steps(2) infinite; }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.hero-sp.atk { animation: lunge-r .45s steps(4); }
+.mon-sp.atk { animation: lunge-l .5s steps(4); }
+@keyframes lunge-r { 50% { transform: translateX(40px); } }
+@keyframes lunge-l { 50% { transform: translateX(-60px) scale(1.08); } }
+.sprite.hit { animation: hit .5s steps(2); }
+@keyframes hit { 0%,50% { filter: brightness(3) saturate(0); transform: translateX(6px); } 25%,75% { filter: none; transform: translateX(-6px); } 100% { filter: none; transform: none; } }
+.sprite.dead { animation: none; opacity: .25; filter: grayscale(1); transform: translateY(16px) rotate(8deg); transition: all .8s steps(6); }
+.bolt { position: absolute; left: 22%; bottom: 70px; width: 30px; height: 30px; z-index: 3; opacity: 0; }
+.bolt img, .bolt svg { width: 100%; height: 100%; display: block; object-fit: contain; }
+.bolt.fly { animation: fly .45s steps(6) forwards; }
+@keyframes fly { 0% { opacity: 1; left: 22%; transform: rotate(0); } 90% { opacity: 1; } 100% { opacity: 0; left: 66%; transform: rotate(360deg); } }
+.dmg { position: absolute; z-index: 4; font-family: var(--pixel); font-size: .9rem; color: var(--neon-yellow); text-shadow: 2px 2px 0 var(--night); animation: rise 1s steps(8) forwards; pointer-events: none; }
+.dmg.hurt { color: var(--neon-red); }
+@keyframes rise { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
+.flash { position: absolute; inset: 0; background: var(--neon-red); opacity: 0; pointer-events: none; z-index: 5; }
+.flash.on { animation: flash .4s steps(2); }
+@keyframes flash { 0%,50% { opacity: .35; } 100% { opacity: 0; } }
+.charge { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 3px solid var(--neon-teal); font-family: var(--pixel); font-size: .55rem; line-height: 1.5; color: var(--neon-pink); position: relative; z-index: 2; background: var(--night); }
+.charge .cbar { flex: 1; height: 14px; border: 2px solid var(--neon-pink); padding: 2px; min-width: 60px; }
+.charge .cbar i { display: block; height: 100%; width: 0; background: var(--neon-pink); }
+.charge.warn .cbar i { background: var(--neon-red); }
+.charge b { color: #fff; min-width: 2.5em; text-align: right; font-weight: 400; }
+.phase { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); font-family: var(--pixel); color: var(--neon-red); font-size: 1rem; text-shadow: 3px 3px 0 var(--night); z-index: 6; white-space: nowrap; animation: blink .5s steps(1) 4; }
+@keyframes blink { 50% { opacity: 0; } }
+.qbox { border: 3px solid #fff; border-radius: 6px; background: var(--night); padding: 14px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 0 0 3px var(--night-3); }
+.qtop { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.qtype { margin: 0; font-family: var(--pixel); font-size: .68rem; color: var(--neon-yellow); line-height: 1.6; }
+.bq { margin: 0; font-weight: 700; font-size: 1.25rem; line-height: 1.45; }
+.qeq { background: var(--night-2); border: 2px dashed var(--night-3); border-radius: 6px; padding: 10px; font-weight: 700; font-size: 1.15rem; line-height: 1.7; }
+.qopts { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.qopt { display: flex; gap: 10px; align-items: center; text-align: left; border: 3px solid var(--neon-teal); background: var(--night-2); color: #fff; border-radius: 6px; padding: 10px 12px; font-weight: 700; font-size: 1.05rem; box-shadow: 0 4px 0 var(--neon-teal); line-height: 1.6; transition: transform .08s, box-shadow .08s; }
+.qopt:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--neon-teal); }
+.qopt .k { flex: none; width: 30px; height: 30px; display: grid; place-items: center; font-family: var(--pixel); font-size: .7rem; background: var(--neon-teal); color: var(--night); }
+.qopt.right { border-color: var(--neon-green); box-shadow: 0 4px 0 var(--neon-green); background: #12351F; }
+.qopt.right .k { background: var(--neon-green); }
+.qopt.wrong { border-color: var(--neon-red); box-shadow: 0 4px 0 var(--neon-red); background: #3A1420; }
+.qopt.wrong .k { background: var(--neon-red); }
+.qopt:disabled { cursor: default; }
+.qopt:disabled:not(.right):not(.wrong) { opacity: .55; }
+.qfb { border: 3px solid var(--neon-yellow); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--night-2); }
+.qfb.no { border-color: var(--neon-red); }
+.qfb p { margin: 0; font-weight: 600; }
+.qfb .ans { color: var(--neon-green); font-weight: 800; }
+.qfb .work { color: #D6D1F0; font-size: .95rem; }
+.pbtn { font-family: var(--pixel); font-size: .72rem; line-height: 1.5; border: 3px solid var(--night); background: var(--neon-yellow); color: var(--night); padding: 14px 16px; box-shadow: 0 4px 0 var(--neon-orange); border-radius: 4px; }
+.pbtn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--neon-orange); }
+.pbtn.ghost { background: transparent; color: var(--neon-teal); border-color: var(--neon-teal); box-shadow: 0 4px 0 var(--neon-teal); }
+@media (min-width: 760px) {
+  .qopts { grid-template-columns: 1fr 1fr; }
+  .stage { height: 250px; }
+  .hero-sp { width: 110px; }
+  .mon-sp { width: 180px; }
+  .hero-sp.pic { width: 130px; height: 152px; }
+  .mon-sp.pic { width: 200px; height: 200px; }
+  .bhud { font-size: .72rem; }
+}
+.bend { margin: auto; text-align: center; display: flex; flex-direction: column; gap: 18px; align-items: center; color: #fff; padding: 24px 8px; }
+.bend h2 { font-family: var(--pixel); font-size: clamp(1.4rem, 7vw, 2.4rem); margin: 0; line-height: 1.3; color: var(--neon-yellow); text-shadow: 4px 4px 0 var(--neon-orange); }
+.bend.lose h2 { color: var(--neon-red); text-shadow: 4px 4px 0 var(--night-3); }
+.bend p { margin: 0; font-weight: 600; max-width: 36ch; }
+.bend .sprite { width: 120px; }
+.bend .sprite img { height: 140px; object-fit: contain; image-rendering: auto; }
+.bend .sprite.down { opacity: .35; filter: grayscale(1); transform: rotate(-90deg); }
+.bend-btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.hits-left { color: #fff; }
+.start-blink { font-family: var(--pixel); font-size: .6rem; color: var(--neon-teal); animation: blink 1s steps(1) infinite; }
+
+/* ---------- results ---------- */
+.results { display: grid; gap: 18px; grid-template-columns: 1fr; padding-block: 8px 20px; }
+.res-hero { background: var(--teal); color: #fff; padding: 22px; display: flex; gap: 18px; align-items: center; }
+.big-ring { --p: 0; width: 120px; height: 120px; flex: none; border-radius: 50%; border: var(--b); background: conic-gradient(var(--yellow) calc(var(--p) * 1%), #fff 0); display: grid; place-items: center; }
+.big-ring span { width: 88px; height: 88px; border-radius: 50%; background: #fff; color: var(--ink); border: var(--b); display: grid; place-items: center; font-weight: 800; font-size: 1.7rem; }
+.res-hero h2 { margin: 0 0 4px; font-size: 1.6rem; line-height: 1.15; font-weight: 800; text-wrap: balance; }
+.res-hero p { margin: 0; font-weight: 600; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.stat { border: var(--b); border-radius: 14px; padding: 8px 10px; background: #fff; box-shadow: 0 4px 0 var(--ink); }
+.stat span { display: block; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.stat b { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat:nth-child(1) { background: var(--yellow-tint); } .stat:nth-child(2) { background: var(--pink-tint); } .stat:nth-child(3) { background: var(--teal-tint); } .stat:nth-child(4) { background: var(--orange-tint); }
+.panel { padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.panel h3 { margin: 0; font-size: 1.15rem; font-weight: 800; }
+.bars { display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: grid; grid-template-columns: 10.5em 1fr 3.2em; gap: 10px; align-items: center; font-weight: 700; font-size: .92rem; }
+.bar { height: 14px; border: 2px solid var(--ink); border-radius: 99px; overflow: hidden; background: #fff; }
+.bar i { display: block; height: 100%; background: var(--teal); }
+.bar i.low { background: var(--orange); }
+.bar-row .n { text-align: right; font-variant-numeric: tabular-nums; }
+.weak { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.weak li { border: 2.5px solid var(--ink); border-radius: 14px; padding: 10px 12px; background: var(--orange-tint); }
+.weak li b { display: block; }
+.weak li span { font-size: .9rem; }
+.weak li.good { background: var(--good-tint); }
+.review { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.review li { border-bottom: 2px solid var(--line); padding: 6px 0 8px; font-size: .95rem; }
+.review li:last-child { border-bottom: 0; }
+.review .you { color: var(--bad); font-weight: 700; }
+.review .key { color: var(--good); font-weight: 800; }
+.review .tag { font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.send { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 700; padding: 12px 14px; border: 2.5px solid var(--ink); border-radius: 14px; background: var(--teal-tint); }
+.send.err { background: var(--orange-tint); }
+.res-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.res-actions .btn { flex: 1 1 200px; }
+@media (min-width: 760px) {
+  .results { grid-template-columns: 1fr 1fr; align-items: start; }
+  .results .span { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .res-hero { flex-direction: column; text-align: center; }
+  .bar-row { grid-template-columns: 8.6em 1fr 3em; font-size: .85rem; }
+}
+footer { text-align: center; color: var(--muted); font-size: .82rem; padding: 14px 16px 20px; }
+footer a { color: var(--teal-ink); font-weight: 700; }
+canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+/* ---------- Periodic Panic additions ---------- */
+.modes.four { grid-template-columns: 1fr 1fr; }
+.mode-card small { display: block; font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--teal-ink); margin-top: 6px; }
+.mode-card.pure { background: var(--pink-tint); }
+.pt-demo { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.pt-tile { display: inline-grid; place-items: center; width: 46px; height: 46px; border: 2.5px solid var(--ink); border-radius: 10px; background: var(--yellow-tint); font-weight: 800; position: relative; line-height: 1; }
+.pt-tile small { position: absolute; top: 3px; left: 4px; font-size: .6rem; color: var(--teal-ink); }
+.pt-tile.m { background: var(--orange-tint); } .pt-tile.n { background: var(--teal-tint); }
+.toast.low { top: auto; bottom: 8px; }
+
+/* chud hearts */
+.chud .hearts { flex: none; }
+
+/* stage select */
+.select { display: flex; flex-direction: column; gap: 16px; color: #fff; margin-block: 4px 16px; }
+.sel-top { display: flex; align-items: center; gap: 14px; border: 3px solid var(--neon-teal); border-radius: 6px; background: var(--night-2); padding: 12px 14px; box-shadow: 0 0 0 3px var(--night), 0 0 22px rgba(46,242,224,.3); }
+.sel-hero { width: 72px; flex: none; image-rendering: pixelated; }
+.sel-hero img, .sel-hero svg { display: block; width: 100%; height: auto; }
+.sel-title { margin: 0; font-family: var(--pixel); font-size: clamp(.9rem, 4vw, 1.3rem); color: var(--neon-yellow); text-shadow: 3px 3px 0 var(--neon-orange); line-height: 1.4; }
+.sel-who { margin: 4px 0 6px; font-weight: 700; color: #D6D1F0; font-size: .92rem; }
+.sel-powers { display: flex; gap: 6px; flex-wrap: wrap; }
+.pw-chip { font-family: var(--pixel); font-size: .48rem; line-height: 1.5; border: 2px solid var(--neon-pink); color: var(--neon-pink); padding: 4px 6px; border-radius: 4px; }
+.pw-chip.none { border-color: var(--night-3); color: #8C86A8; }
+.sel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.scard { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; border: 3px solid var(--neon-teal); background: var(--night-2); color: #fff; border-radius: 6px; padding: 12px 8px 12px; box-shadow: 0 4px 0 var(--neon-teal); transition: transform .08s, box-shadow .08s; }
+.scard:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--neon-teal); }
+.scard:hover:not(:disabled) { background: var(--night-3); }
+.scard .num { position: absolute; top: 6px; left: 8px; font-family: var(--pixel); font-size: .5rem; color: var(--neon-teal); }
+.scard .por { width: 92px; height: 92px; display: grid; place-items: center; image-rendering: pixelated; }
+.scard .por img { width: 100%; height: 100%; object-fit: contain; image-rendering: auto; }
+.scard .por svg { width: 80px; height: 80px; }
+.scard .bn { font-family: var(--pixel); font-size: .58rem; color: var(--neon-pink); line-height: 1.5; }
+.scard .tp { font-weight: 700; font-size: .88rem; line-height: 1.3; }
+.scard .gm { font-size: .78rem; color: #B8B2D6; font-weight: 600; }
+.scard .stt { font-family: var(--pixel); font-size: .48rem; line-height: 1.5; padding: 4px 6px; border-radius: 4px; background: var(--neon-yellow); color: var(--night); }
+.scard.done { border-color: var(--neon-green); box-shadow: 0 4px 0 var(--neon-green); }
+.scard.done .stt { background: var(--neon-green); }
+.scard:disabled { cursor: default; opacity: .55; }
+.scard:disabled .stt { background: var(--night-3); color: #B8B2D6; }
+.sel-note { margin: 0; text-align: center; font-size: .85rem; color: #B8B2D6; font-weight: 600; }
+.sel-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+@media (min-width: 760px) { .sel-grid { grid-template-columns: repeat(4, 1fr); } .scard .por { width: 120px; height: 120px; } .scard .por svg { width: 104px; height: 104px; } }
+
+/* 4-way pad */
+.pad.four { grid-template-columns: repeat(4, 1fr); }
+@media (min-width: 820px) and (min-aspect-ratio: 1/1) { #pad.four { grid-template-columns: repeat(4, 1fr); } }
+
+/* boss powers */
+.powers { display: flex; gap: 8px; flex-wrap: wrap; }
+.pw { font-family: var(--pixel); font-size: .5rem; line-height: 1.5; border: 3px solid var(--neon-pink); background: var(--night-2); color: var(--neon-pink); border-radius: 4px; padding: 6px 8px; box-shadow: 0 3px 0 var(--neon-pink); }
+.pw:disabled { opacity: .35; cursor: default; box-shadow: none; }
+.pw.on { background: var(--neon-pink); color: var(--night); }
+.qopt.gone { opacity: .2 !important; text-decoration: line-through; }
+.cover .powgot { font-family: var(--pixel); font-size: .6rem; color: var(--neon-pink); border: 3px solid var(--neon-pink); padding: 8px 10px; line-height: 1.6; }
+.bend .powgot { font-family: var(--pixel); font-size: .62rem; color: var(--neon-pink); border: 3px solid var(--neon-pink); padding: 10px 12px; line-height: 1.7; max-width: 34ch; }
+.cover .eg { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.cover .eg span { border: 2px solid var(--neon-teal); border-radius: 6px; padding: 4px 8px; font-weight: 800; font-size: .85rem; color: var(--neon-teal); }
+.cover div > svg { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+/* Alkali Blast pad: 4 arrows + 3 metal buttons */
+.pad.bomb { grid-template-columns: repeat(12, 1fr); }
+.pad.bomb button[data-k] { grid-column: span 3; }
+.pad.bomb button[data-m] { grid-column: span 4; font-family: var(--pixel); font-size: .7rem; color: var(--night); line-height: 1.3; }
+.pad.bomb button[data-m] small { display: block; font-size: .42rem; }
+.pad.bomb button[data-m="Li"] { background: #2EF2E0; border-color: #2EF2E0; box-shadow: 0 4px 0 #0E8F86; }
+.pad.bomb button[data-m="Na"] { background: #FCE883; border-color: #FCE883; box-shadow: 0 4px 0 #C9A92E; }
+.pad.bomb button[data-m="K"] { background: #C77DFF; border-color: #C77DFF; box-shadow: 0 4px 0 #7B3FB0; }
+.pad.bomb button[data-m].on { transform: translateY(3px); box-shadow: none; }
+@media (min-width: 820px) and (min-aspect-ratio: 1/1) { #pad.bomb { grid-template-columns: repeat(12, 1fr); } }
+@media (max-width: 819px), (max-aspect-ratio: 1/1) { .pad.bomb button { height: 44px; } }
+/* gate questions inside the cover */
+.cover .bigq { margin: 0; font-weight: 700; font-size: 1.1rem; max-width: 40ch; }
+.cover .cq { display: grid; gap: 8px; width: 100%; max-width: 480px; }
+.cover .cq .qopt { font-size: .98rem; line-height: 1.4; }
+.cover .cfb { border: 3px solid var(--neon-green); border-radius: 6px; padding: 10px 12px; max-width: 480px; width: 100%; text-align: left; font-weight: 600; font-size: .92rem; }
+.cover .cfb.no { border-color: var(--neon-red); }
+.cover .cfb b { color: var(--neon-green); } .cover .cfb.no b { color: var(--neon-red); }
+.cover .walls { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.cover .walls span { border: 2px solid; border-radius: 6px; padding: 4px 8px; font-weight: 800; font-size: .8rem; }
+</style>
+</head>
+<body>
+
+<audio id="mus-menu" loop preload="none" src="Retro%20Game%20Loop.mp3"></audio>
+<audio id="mus-stage" loop preload="none" src="Pixel%20Rush.mp3"></audio>
+<audio id="mus-boss" loop preload="none" src="Pixel%20Battle.mp3"></audio>
+
+<header class="topbar">
+  <a class="brand" href="https://scienceiskhool.github.io/scienceiskhool/" target="_blank" rel="noopener">
+    <img src="https://scienceiskhool.github.io/scienceiskhool/assets/img/head.png" alt="" onerror="this.style.visibility='hidden'">
+    <span><b>Periodic Panic</b><small>Science is Khool · The Periodic Table</small></span>
+  </a>
+  <button class="icon-btn" id="btn-quit" type="button" aria-label="Back to stage select" title="Back to stage select" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg>
+  </button>
+  <button class="icon-btn" id="btn-music" type="button" aria-label="Music on" title="Music">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+  </button>
+  <button class="icon-btn" id="btn-sound" type="button" aria-label="Sound effects on" title="Sound effects">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+  </button>
+</header>
+
+<main class="wrap">
+
+  <!-- START -->
+  <section id="scr-start" class="start">
+    <div class="card hero">
+      <div class="hero-top">
+        <div class="hero-title"><span class="pill">Sec 3–4 Chemistry · The Periodic Table</span>
+        <h1>Periodic <em>Panic</em></h1></div>
+        <img class="cast" src="hero.png" alt="Our hero scientist" onerror="this.remove()">
+      </div>
+      <p>Four bosses have taken over the Periodic Table. Clear each stage, defeat its boss and steal its power for the next fight.</p>
+      <div class="demo" aria-label="Example">
+        <small>Same group, same outer electrons</small>
+        <div class="pt-demo"><span class="pt-tile m"><small>3</small>Li</span><span class="pt-tile m"><small>11</small>Na</span><span class="pt-tile m"><small>19</small>K</span><span class="op" style="font-size:.85rem;color:var(--teal-ink);font-weight:800">all have 1 valence electron → Group 1</span></div>
+      </div>
+      <div class="modes four">
+        <div class="mode-card"><b>1 · Professor Trend</b><span>Trend Snake: periodic trends</span><small>Everyone</small></div>
+        <div class="mode-card"><b>2 · Blaze Alkali</b><span>Alkali Blast: Group 1</span><small>Everyone</small></div>
+        <div class="mode-card"><b>3 · Halo Queen</b><span>Street Fighter: Group 17</span><small>Coming soon</small></div>
+        <div class="mode-card"><b>4 · Sir Noble</b><span>Balloon Fight: Group 18</span><small>Coming soon</small></div>
+      </div>
+    </div>
+
+    <form class="card form" id="form-start" novalidate>
+      <h2>Ready, scientist?</h2>
+      <div class="fields">
+        <label class="f full" for="in-name">Name<input id="in-name" name="name" maxlength="60" autocomplete="name" required></label>
+        <label class="f" for="in-cls">Class<select id="in-cls" name="cls" required><option value="">Choose…</option></select></label>
+        <label class="f" for="in-reg">Register no.<input id="in-reg" name="reg" inputmode="numeric" pattern="[0-9]*" maxlength="2" required></label>
+      </div>
+      <div class="grp"><span>Course</span>
+        <div class="seg" id="seg-lv">
+          <button type="button" class="chip" data-lv="easy" aria-pressed="true">Combined Science<small>All 4 stages</small></button>
+          <button type="button" class="chip" data-lv="hard" aria-pressed="false">Pure Chemistry<small>+ ion charges &amp; noble gas uses</small></button>
+        </div>
+      </div>
+      <p class="form-err" id="form-err" role="alert"></p>
+      <button class="btn big" type="button" id="btn-go">Choose a stage ▶</button>
+      <ul class="how">
+        <li>Play the stages in any order. Each one takes about 3–5 min.</li>
+        <li>Phone or iPad: swipe on the game screen or use the arrow buttons.</li>
+        <li>Laptop: arrow keys (or W A S D).</li>
+      </ul>
+      <div class="best"><span>Stages cleared on this device</span><b id="txt-best">–</b></div>
+    </form>
+  </section>
+
+  <!-- STAGE SELECT -->
+  <section id="scr-select" class="select" hidden>
+    <div class="sel-top">
+      <div class="sel-hero" id="sel-hero"></div>
+      <div><p class="sel-title">STAGE SELECT</p><p class="sel-who" id="sel-who"></p><div class="sel-powers" id="sel-powers"></div></div>
+    </div>
+    <div class="sel-grid" id="sel-grid"></div>
+    <p class="sel-note">Beat a boss to steal its power. Use stolen powers in the other boss fights.</p>
+    <div class="sel-actions"><button class="pbtn ghost" type="button" id="sel-back">◀ CHANGE NAME / COURSE</button></div>
+  </section>
+
+  <!-- STAGE MINI-GAME -->
+  <section id="scr-play" class="climb" hidden>
+    <div class="chud" id="c-hud">
+      <div class="lv" id="c-lv">STAGE 1<span>ROUND 1/3</span></div>
+      <div class="hearts" id="c-hearts"></div>
+      <div class="pts"><small>POINTS</small><span id="c-pts">0</span></div>
+    </div>
+    <div class="qstrip" id="c-q" aria-live="polite"></div>
+    <div class="cwrap" id="c-wrap">
+      <canvas id="cv" width="400" height="500" aria-label="Game screen"></canvas>
+      <div class="toast" id="c-toast" hidden></div>
+      <div class="cover" id="c-cover" hidden></div>
+    </div>
+    <p class="rotate">Turn your phone upright for a bigger view.</p>
+    <div class="pad four" id="pad"></div>
+    <p class="keys" id="keys"></p>
+  </section>
+
+  <!-- BOSS -->
+  <section id="scr-boss" class="boss" hidden>
+    <div class="arena">
+      <div class="stars"></div>
+      <div class="bhud">
+        <div class="hp-who"><span class="hname">HERO</span><div class="hearts" id="b-hearts"></div></div>
+        <div class="hp-who boss-side"><span class="bname"><span id="b-name">BOSS</span> <span class="hits-left" id="b-left"></span></span><div class="hpbar"><i id="b-hp"></i></div></div>
+      </div>
+      <div class="stage" id="b-stage">
+        <div class="sprite hero-sp" id="b-hero"></div>
+        <div class="bolt" id="b-bolt"></div>
+        <div class="sprite mon-sp" id="b-mon"></div>
+        <div class="flash" id="b-flash"></div>
+      </div>
+      <div class="charge" id="b-charge"><span id="b-charge-lbl">BOSS IS CHARGING</span><div class="cbar"><i id="b-cbar"></i></div><b id="b-secs">30</b></div>
+    </div>
+    <div class="qbox">
+      <div class="qtop"><p class="qtype" id="b-qtype">INCOMING ATTACK</p></div>
+      <div class="powers" id="b-powers" hidden></div>
+      <div class="qeq" id="b-qeq" hidden></div>
+      <p class="bq" id="b-qtext"></p>
+      <div class="qopts" id="b-opts"></div>
+      <div class="qfb" id="b-fb" hidden aria-live="polite"><p id="b-fb-msg"></p><button class="pbtn" type="button" id="b-next">NEXT ▶</button></div>
+    </div>
+  </section>
+
+  <section id="scr-bend" class="bend" hidden>
+    <h2 id="be-title">VICTORY!</h2>
+    <div class="sprite" id="be-sprite"></div>
+    <p id="be-msg"></p>
+    <div class="powgot" id="be-pow" hidden></div>
+    <span class="start-blink">PRESS BUTTON TO CONTINUE</span>
+    <div class="bend-btns">
+      <button class="pbtn" type="button" id="be-retry" hidden>TRY AGAIN ↻</button>
+      <button class="pbtn" type="button" id="be-go">SEE RESULTS ▶</button>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="scr-result" class="results" hidden>
+    <div class="card res-hero span">
+      <div class="big-ring" id="res-ring"><span id="res-pct">0%</span></div>
+      <div><h2 id="res-title">Nice work!</h2><p id="res-sub"></p></div>
+    </div>
+    <div class="stats span">
+      <div class="stat"><span>Score</span><b id="res-correct">0</b></div>
+      <div class="stat"><span>Accuracy</span><b id="res-acc">0%</b></div>
+      <div class="stat"><span>Time</span><b id="res-time">0:00</b></div>
+      <div class="stat"><span>Points</span><b id="res-points">0</b></div>
+    </div>
+    <div class="card panel">
+      <h3>Topics</h3>
+      <div class="bars" id="res-bars"></div>
+      <h3>Work on these</h3>
+      <ul class="weak" id="res-weak"></ul>
+    </div>
+    <div class="card panel">
+      <h3>Review</h3>
+      <ul class="review" id="res-review"></ul>
+    </div>
+    <div class="send span" id="send" aria-live="polite"><span id="send-msg">Sending your results…</span><button class="btn alt sm" id="btn-resend" type="button" hidden>Try again</button></div>
+    <div class="res-actions span">
+      <button class="btn big" id="btn-home" type="button">Stage select ▶</button>
+      <button class="btn big alt" id="btn-again" type="button">Replay this stage ↻</button>
+    </div>
+  </section>
+</main>
+
+<footer>Made for <a href="https://www.instagram.com/scienceiskhool/" target="_blank" rel="noopener">@scienceiskhool</a></footer>
+<canvas id="confetti" hidden></canvas>
+<script>
+(function () {
+"use strict";
+
+/* =================== SETTINGS (safe to edit) =================== */
+var SUBMIT_URL = "https://script.google.com/macros/s/AKfycbxCTjRCQzLlWXmmY-5R0p75WCmeFLzC9ZM3gNbGRXpcc_d9qHMXdyCn12B4dHpnrBWe/exec";
+var SHEET_TAB = "Periodic Table";         // tab name in your Google Sheet (one row per boss attempt)
+var MUSIC_VOLUME = 0.25;                  // music volume, 0 to 1. Files (same folder): see the <audio> tags at the top of <body>
+var HITS_TO_WIN = { easy: 5, hard: 6 };   // boss hits needed (easy = Combined Science, hard = Pure Chemistry)
+var BOSS_SECS = 30;                       // seconds before the boss attacks
+var CRIT_SECS = 10;                       // answering within this many seconds is a critical hit (bonus points only)
+var HEARTS = 3;                           // hearts in the boss fight
+var SNAKE_HEARTS = 3;                     // hearts per Snake round (lose them all and the round restarts)
+var SNAKE_STEP_MS = [320, 290, 270];      // Trend Snake: time per move in rounds 1–3 (smaller = faster)
+var HURT_MS = 2000;                       // boss fight: how long the hurt images show
+var IMG = {                               // sprite files (same folder). Missing files fall back to pixel art.
+  hero: "hero.png", heroHurt: "hero%20hurt.png",
+  trend: "trend.png", trendHurt: "trend%20hurt.png",
+  alkali: "alkali.png", alkaliHurt: "alkali%20hurt.png",
+  halo: "halo.png", haloHurt: "halo%20hurt.png",
+  noble: "noble.png", nobleHurt: "noble%20hurt.png"
+};
+var CLASSES = [];
+["S1", "S2", "S3", "S4"].forEach(function (l) {
+  ["Charity", "Courage", "Faith", "Hope", "Humility", "Integrity", "Love", "Respect", "Joy"].forEach(function (v) { CLASSES.push(l + " " + v); });
+});
+CLASSES.push("S5 Faith", "Visitor", "Other");
+
+/* =================== STAGES =================== */
+var STAGES = [
+  { id: 1, key: "trend", boss: "PROFESSOR TREND", title: "Periodic trends", game: "Trend Snake", ready: true,
+    power: { id: "scan", name: "TREND SCANNER", desc: "Crosses out one wrong option" },
+    taunt: "I've scrambled my beautiful table! Prove you know its patterns, or it stays a mess forever!" },
+  { id: 2, key: "alkali", boss: "BLAZE ALKALI", title: "Group 1: alkali metals", game: "Alkali Blast", ready: true,
+    power: { id: "fizz", name: "FIZZ BLAST", desc: "Your next correct answer hits twice" },
+    taunt: "My walls laugh at your puny metals! Only the RIGHT metal in the RIGHT puddle will get you through my lab!" },
+  { id: 3, key: "halo", boss: "HALO QUEEN", title: "Group 17: halogens", game: "Street Fighter", ready: false,
+    power: { id: "swap", name: "DISPLACER", desc: "Swaps this question for a new one" } },
+  { id: 4, key: "noble", boss: "SIR NOBLE", title: "Group 18: noble gases", game: "Balloon Fight", ready: false,
+    power: { id: "shield", name: "INERT SHIELD", desc: "Blocks the damage from one wrong answer" } }
+];
+
+/* =================== HELPERS =================== */
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+function rint(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+function store(k, v) { try { localStorage.setItem("periodicpanic_" + k, JSON.stringify(v)); } catch (e) {} }
+function load(k, d) { try { var v = localStorage.getItem("periodicpanic_" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+function fmtTime(s) { s = Math.round(s); return Math.floor(s / 60) + ":" + ("0" + s % 60).slice(-2); }
+
+/* =================== ELEMENTS 1–20 =================== */
+// [Z, symbol, name, relative atomic mass, electronic configuration, metal (1 metal, 0 non-metal, null metalloid/skip), ion]
+var EL = [
+  [1, "H", "hydrogen", 1, "1", 0, null], [2, "He", "helium", 4, "2", 0, null], [3, "Li", "lithium", 7, "2,1", 1, "1+"],
+  [4, "Be", "beryllium", 9, "2,2", 1, "2+"], [5, "B", "boron", 11, "2,3", null, null], [6, "C", "carbon", 12, "2,4", 0, null],
+  [7, "N", "nitrogen", 14, "2,5", 0, "3−"], [8, "O", "oxygen", 16, "2,6", 0, "2−"], [9, "F", "fluorine", 19, "2,7", 0, "1−"],
+  [10, "Ne", "neon", 20, "2,8", 0, null], [11, "Na", "sodium", 23, "2,8,1", 1, "1+"], [12, "Mg", "magnesium", 24, "2,8,2", 1, "2+"],
+  [13, "Al", "aluminium", 27, "2,8,3", 1, "3+"], [14, "Si", "silicon", 28, "2,8,4", null, null], [15, "P", "phosphorus", 31, "2,8,5", 0, "3−"],
+  [16, "S", "sulfur", 32, "2,8,6", 0, "2−"], [17, "Cl", "chlorine", 35.5, "2,8,7", 0, "1−"], [18, "Ar", "argon", 40, "2,8,8", 0, null],
+  [19, "K", "potassium", 39, "2,8,8,1", 1, "1+"], [20, "Ca", "calcium", 40, "2,8,8,2", 1, "2+"]
+].map(function (r) {
+  var cfg = r[4].split(",").map(Number), v = cfg[cfg.length - 1], p = cfg.length;
+  var g = r[0] === 1 ? null : r[0] === 2 ? 18 : v <= 2 ? v : v === 8 ? 18 : v + 10;
+  return { z: r[0], s: r[1], name: r[2], ar: r[3], cfg: r[4], shells: cfg, val: v, period: p, group: g, metal: r[5], ion: r[6] };
+});
+function E(sym) { return EL.filter(function (e) { return e.s === sym; })[0]; }
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function vtxt(n) { return n + " valence electron" + (n === 1 ? "" : "s"); }
+
+/* =================== TOPICS AND COMMON ERRORS =================== */
+var TYPES = {
+  order: "Order of elements", place: "Period & group", valence: "Valence electrons", group: "Same group, similar properties",
+  metal: "Metal or non-metal", predict: "Predicting properties", charge: "Ion charges",
+  sequence: "Down a group / across a period", amph: "Amphoteric oxides",
+  react: "Reactivity with water", observe: "Observations with water", props: "Physical properties", products: "Products with water"
+};
+var ERR = {
+  order: { label: "Ordered by mass", tip: "The Periodic Table is arranged by increasing proton number. Mass usually goes up too, but not always: argon (18 protons) comes before potassium (19 protons)." },
+  place: { label: "Period or group mix-up", tip: "Number of occupied shells = period number. Valence electrons give the group: 1 → Group 1, 2 → Group 2, 3 to 7 → Groups 13 to 17, a full outer shell → Group 18." },
+  valence: { label: "Counting valence electrons", tip: "Valence electrons are the electrons in the outermost shell: the last number of the electronic configuration." },
+  group: { label: "Same-group mix-up", tip: "Elements in the same group have the same number of valence electrons, so they have similar chemical properties. Elements in the same period do not." },
+  metal: { label: "Metal vs non-metal", tip: "Elements with 1 to 3 valence electrons are usually metals; 4 to 8 usually non-metals. Across a period, elements change from metals to non-metals." },
+  predict: { label: "Prediction slip", tip: "Elements in the same group follow trends. Use the trend down the group to predict an element you haven't studied." },
+  charge: { label: "Ion charge mix-up", tip: "Metals lose their valence electrons to form positive ions (Group 1 → 1+, 2 → 2+, 13 → 3+). Non-metals gain electrons to fill the outer shell (Group 15 → 3−, 16 → 2−, 17 → 1−)." },
+  sequence: { label: "Wrong order", tip: "Going down a group, proton number increases (e.g. F → Cl → Br → I). Across a period from left to right, it goes up by one each time (e.g. Na → Mg → Al → Si)." },
+  amph: { label: "Amphoteric oxide mix-up", tip: "Aluminium oxide, zinc oxide and lead(II) oxide are amphoteric: they react with both acids and alkalis. Oxides of Group 1 and Group 2 metals are basic." },
+  weak: { label: "Metal not reactive enough", tip: "Reactivity with water increases down Group 1: lithium < sodium < potassium." },
+  overkill: { label: "Used a more reactive metal than needed", tip: "Reactivity increases down Group 1: lithium < sodium < potassium. Pick the least reactive metal that does the job." },
+  observe: { label: "Observation mix-up", tip: "All three float and fizz (hydrogen). Lithium fizzes steadily; sodium melts into a silvery ball and darts about; potassium also bursts into a lilac flame." },
+  props: { label: "Physical property mix-up", tip: "Group 1 metals are soft (cut with a knife) and have low densities (they float on water). Melting point decreases down the group." },
+  products: { label: "Products mix-up", tip: "Group 1 metal + water → metal hydroxide + hydrogen. The hydroxide makes the solution alkaline." },
+  timeout: { label: "Ran out of time", tip: "The boss struck first. Answer within the time limit." }
+};
+
+/* =================== STAGE 1 CONTENT: TREND SNAKE =================== */
+// Extra elements beyond the first 20, used for group patterns and amphoteric oxides (no electronic configuration shown for these)
+var EXTRA = [
+  { z: 35, s: "Br", name: "bromine", group: 17, period: 4, val: 7, metal: 0 },
+  { z: 53, s: "I", name: "iodine", group: 17, period: 5, val: 7, metal: 0 },
+  { z: 37, s: "Rb", name: "rubidium", group: 1, period: 5, val: 1, metal: 1 },
+  { z: 30, s: "Zn", name: "zinc", group: null, period: 4, metal: 1, amph: 1 },
+  { z: 82, s: "Pb", name: "lead", group: 14, period: 6, metal: 1, amph: 1 },
+  { z: 29, s: "Cu", name: "copper", group: null, period: 4, metal: 1 },
+  { z: 26, s: "Fe", name: "iron", group: null, period: 4, metal: 1 }
+];
+var ALL = EL.concat(EXTRA);
+function X(sym) { return ALL.filter(function (e) { return e.s === sym; })[0]; }
+E("Al").amph = 1;
+var OXIDE = { Li: "Li₂O", Na: "Na₂O", K: "K₂O", Mg: "MgO", Ca: "CaO", Al: "Al₂O₃", Zn: "ZnO", Pb: "PbO", Cu: "CuO", Fe: "Fe₂O₃" };
+function desc(e) { return e.cfg ? e.s + " is " + e.cfg + ": " + vtxt(e.val) : e.s + " is " + e.name; }
+function inGroupTxt(e) { return e.group ? "Group " + e.group : "the transition metals"; }
+
+// Round 1: eat every element that fits the rule. Tiles show the symbol and proton number.
+var R1POOL = EL.filter(function (e) { return e.z >= 3; }).concat([X("Br"), X("I"), X("Rb")]);
+var PICKS = {
+  met: { type: "metal", err: "metal", text: "Eat only the <b>metals</b>.", ok: function (e) { return e.metal === 1; },
+    pool: R1POOL.filter(function (e) { return e.metal !== null; }),
+    why: function (e) { return desc(e) + " → " + (e.metal ? "metal" : "non-metal") + "."; } },
+  non: { type: "metal", err: "metal", text: "Eat only the <b>non-metals</b>.", ok: function (e) { return e.metal === 0; },
+    pool: R1POOL.filter(function (e) { return e.metal !== null; }),
+    why: function (e) { return desc(e) + " → " + (e.metal ? "metal" : "non-metal") + "."; } },
+  g1: { type: "group", err: "group", text: "Eat every <b>Group 1</b> element.", ok: function (e) { return e.group === 1; },
+    pool: R1POOL,
+    why: function (e) { return desc(e) + " → " + inGroupTxt(e) + "."; } },
+  g17: { type: "group", err: "group", text: "Eat every <b>Group 17</b> element.", ok: function (e) { return e.group === 17; },
+    pool: R1POOL,
+    why: function (e) { return desc(e) + " → " + inGroupTxt(e) + "."; } },
+  amph: { type: "amph", err: "amph", pure: true, text: "Eat the metals that form <b>amphoteric oxides</b>.", ok: function (e) { return !!e.amph; },
+    pool: ["Al", "Zn", "Pb", "Li", "Na", "K", "Mg", "Ca", "Cu", "Fe"].map(X),
+    why: function (e) { return cap(e.name) + " oxide, " + OXIDE[e.s] + ", is " + (e.amph ? "amphoteric: it reacts with both acids and alkalis." : "basic: it reacts with acids but not with alkalis."); } }
+};
+function pickPrompts(lv) {
+  var list = shuffle(["met", "non"]).concat(shuffle(["g1", "g17"]));
+  list = [list[0], list[2], list[1], list[3]];
+  if (lv === "hard") list.push("amph");
+  return list.map(function (id) {
+    var P = PICKS[id], good = shuffle(P.pool.filter(P.ok)), bad = shuffle(P.pool.filter(function (e) { return !P.ok(e); }));
+    var nGood = Math.min(3, good.length);
+    return { id: id, P: P, good: good.slice(0, nGood), bad: bad.slice(0, 6 - nGood), found: 0 };
+  });
+}
+// Round 2: eat a group from top to bottom, or a period from left to right. Tiles show the symbol only.
+var SEQS = [
+  { kind: "group", label: "Group 1", els: ["Li", "Na", "K", "Rb"] },
+  { kind: "group", label: "Group 2", els: ["Be", "Mg", "Ca"] },
+  { kind: "group", label: "Group 17", els: ["F", "Cl", "Br", "I"] },
+  { kind: "group", label: "Group 18", els: ["He", "Ne", "Ar"] },
+  { kind: "period", label: "Period 2", els: ["Li", "Be", "B", "C", "N", "O", "F", "Ne"] },
+  { kind: "period", label: "Period 3", els: ["Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar"] }
+];
+function seqPrompts() {
+  var gs = shuffle(SEQS.filter(function (s) { return s.kind === "group"; })).slice(0, 2), ps = shuffle(SEQS.filter(function (s) { return s.kind === "period"; }));
+  return [gs[0], ps[0], gs[1], ps[1]].map(function (sq) {
+    var mem = sq.els.map(X);
+    if (sq.kind === "period") mem = shuffle(mem).slice(0, 4).sort(function (a, b) { return a.z - b.z; });
+    var bad = shuffle(ALL.filter(function (e) { return e.z > 1 && sq.els.indexOf(e.s) < 0 && !(e.group == null && sq.kind === "group") && (sq.kind === "group" || e.cfg); })).slice(0, 2);
+    var text = sq.kind === "group" ? "Eat the <b>" + sq.label + "</b> elements going <b>down</b> the group." : "Eat these <b>" + sq.label + "</b> elements from <b>left to right</b>.";
+    return { sq: sq, order: mem, bad: bad, done: 0, text: text };
+  });
+}
+// Round 3: place it. Configuration → period and group, or period and group → configuration.
+function posLabel(p, g) { return "P" + p + "\nG" + g; }
+function posText(p, g) { return "Period " + p + ", Group " + g; }
+var GROUPS = [1, 2, 13, 14, 15, 16, 17, 18];
+function placeQs() {
+  var els = shuffle(EL.filter(function (e) { return e.z >= 3; })).slice(0, 4);
+  return els.map(function (e, i) {
+    var opts = [], seen = {};
+    function add(t, ok) { if (!seen[t]) { seen[t] = 1; opts.push({ t: t, ok: ok }); } }
+    if (i % 2 === 0) {
+      add(posLabel(e.period, e.group), true);
+      add(posLabel(e.period, e.val === e.group ? (e.group === 1 ? 2 : e.group - 1) : e.val), false);
+      add(posLabel(e.period === 4 ? 3 : e.period + 1, e.group), false);
+      add(posLabel(e.period === 2 ? 3 : e.period - 1, e.group), false);
+      while (opts.length < 4) add(posLabel(rint(2, 4), pick(GROUPS)), false);
+      return { kind: "cfg", e: e, opts: opts.slice(0, 4), done: false, tries: 0,
+        text: "An atom has the electronic configuration <b>" + e.cfg + "</b>. Eat its position in the Periodic Table (P = period, G = group).",
+        right: posText(e.period, e.group),
+        why: e.cfg + " has " + e.period + " occupied shells → Period " + e.period + ", and " + vtxt(e.val) + " → Group " + e.group + "." };
+    }
+    var sh = e.shells, v = e.val;
+    add(e.cfg, true);
+    if (sh.length > 2) add(sh.slice(0, -2).concat(sh.slice(-1)).join(","), false); // one shell too few
+    add(sh.slice(0, -1).concat([8, v]).join(","), false);                             // one shell too many
+    if (v < 8) add(sh.slice(0, -1).concat([v + 1]).join(","), false);
+    if (v > 1) add(sh.slice(0, -1).concat([v - 1]).join(","), false);
+    var rev = sh.slice().reverse().join(","); if (rev !== e.cfg) add(rev, false);
+    shuffle(EL.filter(function (x) { return x.z >= 3 && (x.period === e.period || x.val === e.val); })).forEach(function (x) { if (opts.length < 4) add(x.cfg, false); });
+    return { kind: "pos", e: e, opts: shuffle(opts.slice(1)).slice(0, 3).concat([opts[0]]), done: false, tries: 0,
+      text: "An element is in <b>" + posText(e.period, e.group) + "</b>. Eat its electronic configuration.",
+      right: e.cfg,
+      why: "Period " + e.period + " → " + e.period + " occupied shells. Group " + e.group + " → " + vtxt(e.val) + ". So it is " + e.cfg + " (" + e.name + ")." };
+  });
+}
+var ROUNDS = [
+  { kind: "pick", name: "SORT 'EM!", tip: "Eat every element that fits the rule. The small number is the proton number." },
+  { kind: "seq", name: "IN ORDER!", tip: "Eat the elements of a group from <b>top to bottom</b>, or of a period from <b>left to right</b>. Avoid the elements that don't belong! Use your Periodic Table if you need to." },
+  { kind: "place", name: "PLACE IT!", tip: "Match electronic configurations to positions in the Periodic Table." }
+];
+
+/* =================== BOSS QUESTIONS: PROFESSOR TREND =================== */
+// each: { type, q, opts: [[text, true] or [text, errKey]], why, pure (optional) } — or a function returning one
+function qCfgToPos() {
+  var e = pick(EL.filter(function (x) { return x.z >= 3; }));
+  var o = [[posText(e.period, e.group), true], [posText(e.period, e.val === e.group ? (e.group === 1 ? 2 : e.group - 1) : e.val), "place"], [posText(e.group <= 4 ? e.group : e.val, e.period), "place"], [posText(e.period === 4 ? 3 : e.period + 1, e.group), "place"]];
+  var seen = {}; o = o.filter(function (x) { if (seen[x[0]]) return false; seen[x[0]] = 1; return true; });
+  while (o.length < 4) { var t = posText(rint(2, 4), pick(GROUPS)); if (!seen[t]) { seen[t] = 1; o.push([t, "place"]); } }
+  return { type: "place", q: "An atom has the electronic configuration " + e.cfg + ". Where is the element in the Periodic Table?", opts: o, why: e.period + " occupied shells → Period " + e.period + "; " + vtxt(e.val) + " → Group " + e.group + "." };
+}
+function qSimilar() {
+  var pairs = [["Mg", "Ca", "Na", "Al"], ["O", "S", "N", "F"], ["F", "Cl", "O", "Ne"], ["Na", "K", "Mg", "Ne"], ["Li", "Na", "Be", "He"], ["N", "P", "C", "O"], ["Be", "Mg", "Li", "B"]];
+  var p = pick(pairs), a = E(p[0]);
+  return { type: "group", q: "Which element has chemical properties most similar to " + a.name + "?", opts: [[cap(E(p[1]).name), true], [cap(E(p[2]).name), "group"], [cap(E(p[3]).name), "group"], [cap(pick(EL.filter(function (e) { return e.z >= 3 && e.group !== a.group && p.indexOf(e.s) < 0; })).name), "group"]],
+    why: cap(a.name) + " (" + a.cfg + ") and " + E(p[1]).name + " (" + E(p[1]).cfg + ") both have " + vtxt(a.val) + ", so they are in the same group." };
+}
+function qMetalCfg() {
+  var m = pick(EL.filter(function (e) { return e.metal === 1; })), n = shuffle(EL.filter(function (e) { return e.metal === 0 && e.z >= 3; })).slice(0, 3);
+  return { type: "metal", q: "Which electronic configuration belongs to a metal?", opts: [[m.cfg, true]].concat(n.map(function (e) { return [e.cfg, "metal"]; })),
+    why: m.cfg + " has " + vtxt(m.val) + ", so it is a metal (" + m.name + ")." };
+}
+function qIon() {
+  var e = pick(EL.filter(function (x) { return !!x.ion; })), right = e.ion, all = ["1+", "2+", "3+", "1−", "2−", "3−"];
+  var wrong = shuffle(all.filter(function (x) { return x !== right; })).slice(0, 3);
+  return { type: "charge", pure: true, q: "An atom has the electronic configuration " + e.cfg + ". What is the charge on its ion?", opts: [[right, true]].concat(wrong.map(function (x) { return [x, "charge"]; })),
+    why: e.cfg + ": " + (e.metal ? "it loses its " + vtxt(e.val) : "it gains " + (8 - e.val) + " electron" + (8 - e.val === 1 ? "" : "s") + " to fill its outer shell") + ", forming a " + right + " ion (" + e.name + ")." };
+}
+qIon.pure = true;
+var BQ1 = [
+  { type: "order", q: "In the Periodic Table, the elements are arranged in order of increasing…", opts: [["proton number", true], ["relative atomic mass", "order"], ["number of neutrons", "order"], ["number of valence electrons", "order"]], why: "The Periodic Table is arranged by proton (atomic) number." },
+  { type: "order", q: "Argon (relative atomic mass 40) comes before potassium (relative atomic mass 39) in the Periodic Table. Why?", opts: [["Argon has fewer protons than potassium", true], ["Argon is heavier than potassium", "order"], ["Argon is a gas and potassium is a solid", "order"], ["Argon has more electron shells than potassium", "place"]], why: "Argon has 18 protons and potassium has 19. The table goes by proton number, not mass." },
+  qCfgToPos, qCfgToPos,
+  { type: "place", q: "The period number of an element is the same as its number of…", opts: [["occupied electron shells", true], ["valence electrons", "place"], ["protons", "place"], ["neutrons", "place"]], why: "For example, sodium (2,8,1) has 3 occupied shells and is in Period 3." },
+  { type: "valence", q: "How many valence electrons does a sulfur atom (proton number 16) have?", opts: [["6", true], ["16", "valence"], ["3", "place"], ["8", "valence"]], why: "Sulfur is 2,8,6: 6 valence electrons, in 3 shells." },
+  { type: "group", q: "Lithium, sodium and potassium have similar chemical properties because they…", opts: [["have the same number of valence electrons", true], ["have the same number of electron shells", "place"], ["have the same proton number", "group"], ["are all in Period 3", "place"]], why: "Each has 1 valence electron (2,1; 2,8,1; 2,8,8,1), so they react in similar ways." },
+  qSimilar, qSimilar,
+  { type: "metal", q: "Going across Period 3 from sodium to argon, the elements change from…", opts: [["metals to non-metals", true], ["non-metals to metals", "metal"], ["non-metals to metals, then back to non-metals", "metal"], ["metals throughout the period", "metal"]], why: "Na, Mg and Al are metals; Si is a metalloid; P, S, Cl and Ar are non-metals." },
+  qMetalCfg,
+  { type: "metal", q: "Element Q has 6 valence electrons. Q is most likely…", opts: [["a non-metal", true], ["a metal", "metal"], ["a noble gas", "valence"], ["in Group 6", "place"]], why: "Elements with 4 to 7 valence electrons are usually non-metals, e.g. oxygen (2,6) and sulfur (2,8,6). Q is in Group 16." },
+  { type: "metal", q: "Element R has 2 valence electrons and 3 occupied shells. R is…", opts: [["a metal in Period 3", true], ["a non-metal in Period 2", "place"], ["a metal in Period 2", "place"], ["a non-metal in Period 3", "metal"]], why: "2,8,2 is magnesium: a metal in Period 3, Group 2." },
+  { type: "predict", q: "Rubidium is below potassium in Group 1. Which prediction is most likely correct?", opts: [["Rubidium reacts with water more vigorously than potassium", true], ["Rubidium does not react with water", "predict"], ["Rubidium reacts with water less vigorously than potassium", "predict"], ["Rubidium has 2 valence electrons", "valence"]], why: "Group 1 metals get more reactive down the group. Rubidium still has 1 valence electron." },
+  { type: "predict", q: "Astatine is below iodine in Group 17. Astatine is most likely to…", opts: [["exist as diatomic molecules, At₂", true], ["exist as single atoms, like the noble gases", "predict"], ["be a soft, silvery metal", "metal"], ["have 1 valence electron", "valence"]], why: "Halogens are diatomic non-metals with 7 valence electrons. Astatine follows the pattern." },
+  { type: "sequence", q: "Which list shows the Group 17 elements in order going down the group?", opts: [["F, Cl, Br, I", true], ["I, Br, Cl, F", "sequence"], ["Cl, F, Br, I", "sequence"], ["F, Br, Cl, I", "sequence"]], why: "Proton number increases down the group: F (9), Cl (17), Br (35), I (53)." },
+  { type: "sequence", q: "Which list shows these Period 3 elements from left to right?", opts: [["Na, Mg, Al, S", true], ["S, Al, Mg, Na", "sequence"], ["Mg, Na, Al, S", "sequence"], ["Na, Al, Mg, S", "sequence"]], why: "Across Period 3, proton number goes up by one each time: Na (11), Mg (12), Al (13) … S (16)." },
+  qIon, qIon,
+  { type: "amph", pure: true, q: "Which metal forms an amphoteric oxide?", opts: [["Zinc", true], ["Sodium", "amph"], ["Magnesium", "amph"], ["Calcium", "amph"]], why: "Zinc oxide (ZnO) reacts with both acids and alkalis. The oxides of sodium, magnesium and calcium are basic." },
+  { type: "amph", pure: true, q: "Aluminium oxide is amphoteric. This means it…", opts: [["reacts with both acids and alkalis", true], ["reacts with acids only", "amph"], ["reacts with alkalis only", "amph"], ["does not react with acids or alkalis", "amph"]], why: "Amphoteric oxides show both basic and acidic properties." },
+  { type: "charge", pure: true, q: "Elements in Group 16 form ions with a charge of…", opts: [["2−", true], ["6+", "charge"], ["2+", "charge"], ["6−", "charge"]], why: "With 6 valence electrons, they gain 2 more to fill the outer shell, e.g. O²⁻ and S²⁻." },
+  { type: "charge", pure: true, q: "Why does a potassium atom form a K⁺ ion?", opts: [["It loses 1 valence electron to get a full outer shell", true], ["It gains 1 electron to get a full outer shell", "charge"], ["It loses 1 proton", "charge"], ["It gains 1 proton", "charge"]], why: "2,8,8,1 → 2,8,8. With 19 protons and 18 electrons, the charge is 1+." }
+];
+var BOSS_POOL = {
+  1: { easy: BQ1.filter(function (q) { return !q.pure; }), hard: BQ1 }
+};
+
+/* =================== STAGE 2 CONTENT: ALKALI BLAST =================== */
+var FUSE_SECS = 1.8;                      // Alkali Blast: seconds between dropping a metal and the blast
+var MET = {
+  Li: { p: 1, name: "lithium", col: "#2EF2E0", obs: "Lithium floats and fizzes steadily, moving about slowly." },
+  Na: { p: 2, name: "sodium", col: "#FCE883", obs: "Sodium floats, melts into a silvery ball and darts about, fizzing rapidly." },
+  K: { p: 3, name: "potassium", col: "#C77DFF", obs: "Potassium floats, melts and bursts into a lilac flame, darting about very rapidly." }
+};
+var WALL_NAME = { 1: "CLAY", 2: "BRICK", 3: "STEEL" };
+// gate questions between rooms: [room 1 gate, room 2 gate, room 3 gate (the final door)]
+var G_OBS = [
+  { type: "observe", q: "A small piece of potassium is added to a trough of water. What do you see?", opts: [["It floats and bursts into a lilac flame", true], ["It sinks and fizzes slowly", "props"], ["It fizzes steadily and moves about slowly, without melting", "observe"], ["There is no visible change", "observe"]], why: "Potassium is the most reactive of the three. The heat given out sets the hydrogen alight with a lilac flame." },
+  { type: "observe", q: "Which metal floats and fizzes steadily, moving about slowly without melting?", opts: [["Lithium", true], ["Sodium", "observe"], ["Potassium", "observe"], ["Rubidium", "observe"]], why: "Lithium is the least reactive Group 1 metal, so its reaction with water is the gentlest." },
+  { type: "observe", q: "A small piece of sodium is added to water. Which observation is correct?", opts: [["It melts into a silvery ball and darts about on the surface", true], ["It bursts into a lilac flame", "observe"], ["It sinks to the bottom of the trough", "props"], ["It slowly turns the water blue", "products"]], why: "Sodium reacts vigorously. The heat given out melts it into a ball, and the hydrogen pushes it around." },
+  { type: "observe", q: "Lithium, sodium and potassium all fizz in water. The fizzing is caused by…", opts: [["hydrogen gas", true], ["oxygen gas", "products"], ["carbon dioxide gas", "products"], ["steam from boiling water", "observe"]], why: "Group 1 metal + water → metal hydroxide + hydrogen. The bubbles are hydrogen." }
+];
+var G_PROPS = [
+  { type: "props", q: "Melting points: lithium 181 °C, sodium 98 °C, potassium 63 °C. What is the trend going down Group 1?", opts: [["The melting point decreases", true], ["The melting point increases", "props"], ["The melting point stays the same", "props"], ["There is no pattern", "props"]], why: "Melting point decreases down Group 1. Group 1 metals have much lower melting points than most metals." },
+  { type: "props", q: "Lithium, sodium and potassium can all be cut with a knife. This shows they are…", opts: [["soft metals", true], ["hard metals", "props"], ["non-metals", "metal"], ["brittle solids", "props"]], why: "Group 1 metals are relatively soft. Potassium is the softest of the three." },
+  { type: "props", q: "Lithium, sodium and potassium all float on water. This is because they…", opts: [["have a lower density than water", true], ["have a higher density than water", "props"], ["are less reactive than water", "react"], ["have low melting points", "props"]], why: "Group 1 metals have low densities, lower than water (1 g/cm³), so they float." },
+  { type: "props", q: "Which of these metals is the easiest to cut with a knife?", opts: [["Potassium", true], ["Lithium", "props"], ["Sodium", "props"], ["Iron", "props"]], why: "Group 1 metals get softer going down the group. Iron is a hard transition metal." }
+];
+var G_PROD = [
+  { type: "products", q: "Potassium reacts with water. What are the products?", opts: [["Potassium hydroxide and hydrogen", true], ["Potassium oxide and hydrogen", "products"], ["Potassium hydroxide and oxygen", "products"], ["Potassium oxide and water", "products"]], why: "Group 1 metal + water → metal hydroxide + hydrogen." },
+  { type: "products", q: "After sodium reacts with water, a few drops of universal indicator are added. What colour does it turn?", opts: [["Purple, because the solution is alkaline", true], ["Red, because the solution is acidic", "products"], ["Green, because the solution is neutral", "products"], ["Orange, because hydrogen is acidic", "products"]], why: "Sodium hydroxide is formed. It is a strong alkali, so the indicator turns purple (pH above 7)." },
+  { type: "products", q: "Which equation shows sodium reacting with water?", opts: [["2Na + 2H₂O → 2NaOH + H₂", true], ["2Na + H₂O → Na₂O + H₂", "products"], ["Na + H₂O → NaOH + O₂", "products"], ["Na + 2H₂O → Na(OH)₂ + H₂", "products"]], why: "Sodium hydroxide (NaOH) and hydrogen (H₂) form. Two Na balance the two H atoms in H₂." }
+];
+var G_PRED = [
+  { type: "predict", q: "Rubidium is below potassium in Group 1. Predict how rubidium reacts with water.", opts: [["Even more vigorously than potassium, possibly exploding", true], ["Less vigorously than potassium", "predict"], ["It does not react with water", "predict"], ["About as vigorously as lithium", "predict"]], why: "Reactivity increases down Group 1, so rubidium is more reactive than potassium." },
+  { type: "predict", q: "Melting points: Li 181 °C, Na 98 °C, K 63 °C. Predict the melting point of rubidium.", opts: [["39 °C", true], ["63 °C", "predict"], ["120 °C", "predict"], ["181 °C", "predict"]], why: "Melting point decreases down Group 1, so rubidium melts below 63 °C. (It is 39 °C.)" },
+  { type: "predict", q: "Rubidium reacts with water. Predict the products.", opts: [["Rubidium hydroxide and hydrogen", true], ["Rubidium oxide and oxygen", "products"], ["Rubidium hydroxide and oxygen", "products"], ["No products: rubidium is unreactive", "predict"]], why: "Rubidium is in Group 1, so it reacts like the others: metal hydroxide + hydrogen." }
+];
+var GATES = [
+  { name: "LAB DOOR 1", qs: function () { return shuffle(G_OBS).slice(0, 2); } },
+  { name: "LAB DOOR 2", qs: function () { return shuffle(G_PROPS).slice(0, 2); } },
+  { name: "THE FINAL DOOR", qs: function () { return [pick(G_PROD), pick(G_PRED)]; } }
+];
+
+/* =================== BOSS QUESTIONS: BLAZE ALKALI =================== */
+var BQ2 = G_OBS.concat(G_PROPS, G_PROD, G_PRED, [
+  { type: "react", q: "Going down Group 1 from lithium to potassium, reactivity with water…", opts: [["increases", true], ["decreases", "weak"], ["stays the same", "weak"], ["increases, then decreases", "weak"]], why: "Lithium < sodium < potassium: reactivity increases down the group." },
+  { type: "react", q: "Which metal reacts most vigorously with water?", opts: [["Potassium", true], ["Sodium", "weak"], ["Lithium", "weak"], ["Magnesium", "weak"]], why: "Potassium is the lowest of the three in Group 1, so it is the most reactive." },
+  { type: "react", q: "A metal floats on water, melts, and bursts into a lilac flame. Which metal is it?", opts: [["Potassium", true], ["Sodium", "observe"], ["Lithium", "observe"], ["Copper", "react"]], why: "The lilac flame is a sign of potassium, the most reactive of the three." },
+  { type: "group", q: "Lithium, sodium and potassium react in similar ways because they all…", opts: [["have 1 valence electron", true], ["have the same number of electron shells", "place"], ["have low melting points", "props"], ["float on water", "props"]], why: "Same group, same number of valence electrons (1), so similar chemical properties." },
+  { type: "products", q: "How can you test for the gas given off when lithium reacts with water?", opts: [["A lighted splint goes out with a 'pop'", true], ["A glowing splint relights", "products"], ["It turns limewater milky", "products"], ["It turns damp blue litmus red", "products"]], why: "The gas is hydrogen, which burns with a 'pop'." },
+  { type: "predict", q: "Caesium is below rubidium in Group 1. Compared with sodium, caesium…", opts: [["is more reactive and has a lower melting point", true], ["is less reactive and has a higher melting point", "predict"], ["is more reactive and has a higher melting point", "predict"], ["is less reactive and has a lower melting point", "predict"]], why: "Going down Group 1, reactivity increases and melting point decreases." }
+]);
+BOSS_POOL[2] = { easy: BQ2, hard: BQ2 };
+
+/* =================== PIXEL SPRITES (used if an image file is missing) =================== */
+var HERO_MAP = [
+  "......kkkkk.....", ".....kHHHHHk....", "....kHHHHHHHk...", "....kHSSSSSHk...", "...kkkkSSkkkk...", "...kGGkSSkGGk...",
+  "....kkSSSSkk....", ".....kSmmSk.....", "....kWWkkWWk....", "...kWWWtWWWWk.kk", "..kWWkWtWWkWWkFk", "..kSkWWtWWWkSkFk",
+  "...kkWWtWWWWkkkk", "....kWWWWWWk....", "....kBBkkBBk....", "....kkk..kkk...."
+];
+var HERO_PAL = { k: "#1F2A2E", H: "#3B2A20", S: "#F4C9A8", G: "#2EF2E0", m: "#C0504D", W: "#FFFFFF", t: "#069494", F: "#FF8243", B: "#3A4FA0" };
+var BOSS_MAP = [
+  "....kkkkkkkk....", "...kFFFFIIIIk...", "..kFYFFFIIwIIk..", "..kFFkkkkkkIIk..", "..kkGGkSSkGGkk..", "...kGGkSSkGGk...",
+  "...kSSSSSSSSk...", "...kSkmmmmkSk...", "....kSSSSSSk....", "...kWWWkkWWWk...", "..kWWWWtWWWWWk..", ".kFkWWWtWWWWkIk.",
+  ".kFkWWWtWWWWkIk.", "..kkWWWtWWWWkk..", "...kWWWWWWWWk...", "...kFFk..kIIk..."
+];
+var BOSS_PALS = {
+  trend: { k: "#1F2A2E", F: "#C9CED6", Y: "#FFFFFF", I: "#C9CED6", w: "#FFFFFF", G: "#FCE883", S: "#F4C9A8", m: "#5A2A3A", W: "#F4F8FA", t: "#069494" },
+  alkali: { k: "#1F2A2E", F: "#C77DFF", Y: "#FF8243", I: "#E0B3FF", w: "#FFFFFF", G: "#FCE883", S: "#D7DEE6", m: "#5A2A3A", W: "#AEB8C6", t: "#6B7686" },
+  halo: { k: "#1F2A2E", F: "#C6F25A", Y: "#FFFFFF", I: "#8B3A2E", w: "#FFFFFF", G: "#B66DFF", S: "#F4C9A8", m: "#5A2A3A", W: "#7B2FBF", t: "#1F2A2E" },
+  noble: { k: "#1F2A2E", F: "#FF5A36", Y: "#FF9E7A", I: "#B15CFF", w: "#FFFFFF", G: "#FF5A36", S: "#C9CED6", m: "#5A2A3A", W: "#D7DEE6", t: "#B15CFF" }
+};
+var BOLT_MAP = ["...kk...", "..kYYk..", ".kYFFYk.", "kYFFFFYk", "kYFRRFYk", ".kFRRFk.", "..kFFk..", "...kk..."];
+var BOLT_PAL = { k: "#1F2A2E", Y: "#FCE883", F: "#FF8243", R: "#FF4D5E" };
+var HEART_MAP = [".kk.kk.", "kRRkRRk", "kRwRRRk", "kRRRRRk", ".kRRRk.", "..kRk..", "...k..."];
+var HEART_PAL = { k: "#0D0B1A", R: "#FF4D5E", w: "#FFFFFF" };
+var PIX = { hero: [HERO_MAP, HERO_PAL], heroHurt: [HERO_MAP, HERO_PAL] };
+Object.keys(BOSS_PALS).forEach(function (k) { PIX[k] = [BOSS_MAP, BOSS_PALS[k]]; PIX[k + "Hurt"] = [BOSS_MAP, BOSS_PALS[k]]; });
+function pixelSVG(map, pal) {
+  var w = 0, r = "";
+  map.forEach(function (row, y) { w = Math.max(w, row.length); for (var x = 0; x < row.length; x++) { var c = pal[row[x]]; if (c) r += '<rect x="' + x + '" y="' + y + '" width="1.02" height="1.02" fill="' + c + '"/>'; } });
+  return '<svg viewBox="0 0 ' + w + " " + map.length + '" shape-rendering="crispEdges" aria-hidden="true">' + r + "</svg>";
+}
+function pixelCanvas(map, pal) {
+  var c = document.createElement("canvas"), w = 0; map.forEach(function (r) { w = Math.max(w, r.length); });
+  c.width = w; c.height = map.length; var x = c.getContext("2d");
+  map.forEach(function (row, y) { for (var i = 0; i < row.length; i++) { var col = pal[row[i]]; if (col) { x.fillStyle = col; x.fillRect(i, y, 1, 1); } } });
+  return c;
+}
+var SP = {};
+Object.keys(IMG).forEach(function (k) {
+  var px = pixelCanvas(PIX[k][0], PIX[k][1]);
+  SP[k] = { ok: false, el: px, pixel: true, w: px.width, h: px.height };
+  var im = new Image();
+  im.onload = function () { SP[k] = { ok: true, el: im, pixel: false, w: im.naturalWidth, h: im.naturalHeight }; if (k === "hero" || !/Hurt/.test(k)) { paintBossSprites(); paintSelect(); } };
+  im.src = IMG[k];
+});
+function domArt(k) { return SP[k] && SP[k].ok ? '<img src="' + esc(IMG[k]) + '" alt="">' : pixelSVG(PIX[k][0], PIX[k][1]); }
+function heartsHTML(n, max, breakIdx) { var h = ""; for (var i = 0; i < max; i++) h += '<span class="' + (i >= n ? "lost" : "") + (i === breakIdx ? " breaking" : "") + '">' + pixelSVG(HEART_MAP, HEART_PAL) + "</span>"; return h; }
+
+/* =================== SOUND =================== */
+var Sound = {
+  on: load("sound", true), ctx: null,
+  tone: function (f, type, dur, vol, delay, f2) {
+    if (!this.on) return;
+    try {
+      this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)();
+      if (this.ctx.state === "suspended") this.ctx.resume();
+      var c = this.ctx, t = c.currentTime + (delay || 0), o = c.createOscillator(), g = c.createGain();
+      o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + .02);
+    } catch (e) {}
+  },
+  tap: function () { this.tone(660, "square", .05, .04); },
+  move: function () { this.tone(440, "square", .04, .03); },
+  jump: function () { this.tone(300, "square", .16, .05, 0, 700); },
+  ok: function () { this.tone(660, "square", .09, .06); this.tone(990, "square", .14, .06, .08); },
+  bad: function () { this.tone(180, "square", .2, .07); },
+  smash: function () { this.tone(900, "sawtooth", .08, .06, 0, 200); this.tone(120, "square", .35, .07, .08, 60); },
+  orb: function () { this.tone(1046, "square", .06, .04); this.tone(1568, "square", .08, .04, .05); },
+  clear: function () { [784, 988, 1175, 1568].forEach(function (n, i) { Sound.tone(n, "square", .08, .05, i * .06); }); },
+  freeze: function () { this.tone(1400, "triangle", .3, .05, 0, 400); },
+  slide: function () { this.tone(200, "triangle", .25, .05, 0, 120); },
+  hit: function () { [880, 660, 990].forEach(function (n, i) { Sound.tone(n, "square", .07, .07, i * .05); }); },
+  hurt: function () { this.tone(140, "sawtooth", .3, .08); this.tone(90, "square", .3, .06, .1); },
+  level: function () { [523, 659, 784, 1047].forEach(function (n, i) { Sound.tone(n, "square", .12, .06, i * .1); }); },
+  win: function () { [523, 659, 784, 1047, 784, 1047].forEach(function (n, i) { Sound.tone(n, "square", .14, .06, i * .12); }); },
+  lose: function () { [392, 330, 262, 196].forEach(function (n, i) { Sound.tone(n, "square", .22, .06, i * .2); }); }
+};
+
+var Music = {
+  on: load("music", true), cur: null, want: null,
+  el: function (n) { return $("mus-" + n); },
+  play: function (n) {
+    this.want = n;
+    var self = this; ["menu", "stage", "boss"].forEach(function (m) { if (m !== n) { var e = self.el(m); clearInterval(e._f); try { e.pause(); e.currentTime = 0; } catch (x) {} } });
+    if (!this.on || !n) { this.cur = null; return; }
+    var e = this.el(n); clearInterval(e._f);
+    if (this.cur === n && !e.paused) return;
+    this.cur = n;
+    try { e.volume = MUSIC_VOLUME; var p = e.play(); if (p && p.catch) p.catch(function () { self.cur = null; }); } catch (x) {}
+  },
+  stop: function () { this.play(null); },
+  fadeOut: function () { var n = this.cur; if (!n) return; var e = this.el(n), v = e.volume, self = this; clearInterval(e._f); e._f = setInterval(function () { v -= .03; if (v <= 0) { clearInterval(e._f); try { e.pause(); e.currentTime = 0; } catch (x) {} self.cur = null; } else e.volume = v; }, 60); }
+};
+function paintSound() {
+  $("btn-sound").classList.toggle("off", !Sound.on); $("btn-sound").setAttribute("aria-label", Sound.on ? "Sound effects on" : "Sound effects off");
+  $("btn-music").classList.toggle("off", !Music.on); $("btn-music").setAttribute("aria-label", Music.on ? "Music on" : "Music off");
+}
+$("btn-sound").addEventListener("click", function () { Sound.on = !Sound.on; store("sound", Sound.on); paintSound(); });
+$("btn-music").addEventListener("click", function () { Music.on = !Music.on; store("music", Music.on); paintSound(); var w = Music.want; Music.cur = null; Music.play(Music.on ? w : null); Music.want = w; });
+document.addEventListener("visibilitychange", function () {
+  if (document.hidden) { if (Music.cur) Music.el(Music.cur).pause(); } else if (Music.cur && Music.on) { try { Music.el(Music.cur).play().catch(function () {}); } catch (e) {} }
+});
+document.addEventListener("pointerdown", function first() { document.removeEventListener("pointerdown", first, true); if (!Music.cur && Music.want) { var w = Music.want; Music.play(w); } }, true);
+paintSound();
+
+if (navigator.maxTouchPoints > 0 || "ontouchstart" in window) document.body.classList.add("touch");
+
+/* =================== SCREENS =================== */
+var SCREENS = ["scr-start", "scr-select", "scr-play", "scr-boss", "scr-bend", "scr-result"];
+function show(id) {
+  SCREENS.forEach(function (s) { $(s).hidden = s !== id; });
+  var dark = id === "scr-select" || id === "scr-play" || id === "scr-boss" || id === "scr-bend";
+  document.body.classList.toggle("dark", dark);
+  document.body.classList.toggle("playing", id === "scr-play");
+  $("btn-quit").hidden = id === "scr-start" || id === "scr-select";
+  if (id === "scr-start" || id === "scr-result" || id === "scr-select") Music.play("menu");
+  else if (id === "scr-play") Music.play("stage");
+  else if (id === "scr-boss") Music.play("boss");
+  window.scrollTo(0, 0);
+}
+
+/* =================== START SCREEN =================== */
+var G = { lv: "easy" }, STG = STAGES[0];
+(function setup() {
+  var sel = $("in-cls");
+  CLASSES.forEach(function (c) { var o = document.createElement("option"); o.textContent = c; sel.appendChild(o); });
+  var st = load("student", null);
+  if (st) { $("in-name").value = st.name || ""; sel.value = st.cls || ""; $("in-reg").value = st.reg || ""; }
+  G.lv = load("lv", "easy");
+  paintStart();
+  Music.want = "menu";
+})();
+function studentKey(s) { return (s.name + "|" + s.cls + "|" + s.reg).toLowerCase(); }
+function progress() { var all = load("progress", {}); return (G.student && all[studentKey(G.student)]) || { cleared: [] }; }
+function saveCleared(id) {
+  var all = load("progress", {}), k = studentKey(G.student), p = all[k] || { cleared: [] };
+  if (p.cleared.indexOf(id) < 0) p.cleared.push(id);
+  all[k] = p; store("progress", all);
+}
+function ownedPowers() {
+  if (/allpowers/.test(location.hash)) return STAGES.map(function (s) { return s.power; });
+  var c = progress().cleared; return STAGES.filter(function (s) { return c.indexOf(s.id) >= 0; }).map(function (s) { return s.power; });
+}
+function paintStart() {
+  document.querySelectorAll("#seg-lv .chip").forEach(function (c) { c.setAttribute("aria-pressed", c.dataset.lv === G.lv ? "true" : "false"); });
+  var st = load("student", null), n = 0;
+  if (st) { var all = load("progress", {}), p = all[studentKey(st)]; n = p ? p.cleared.length : 0; }
+  $("txt-best").textContent = st ? n + " of 4" : "–";
+}
+$("seg-lv").addEventListener("click", function (e) { var c = e.target.closest(".chip"); if (!c) return; G.lv = c.dataset.lv; store("lv", G.lv); Sound.tap(); paintStart(); });
+function readStudent() {
+  var name = $("in-name").value.trim(), cls = $("in-cls").value, reg = $("in-reg").value.trim();
+  if (!name) return err("Type your name."), null;
+  if (!cls) return err("Choose your class."), null;
+  if (!(cls === "Visitor" || /^\d{1,2}$/.test(reg))) return err("Type your register number (1–2 digits)."), null;
+  err("");
+  var s = { name: name, cls: cls, reg: reg }; store("student", s); return s;
+  function err(m) { $("form-err").textContent = m; }
+}
+$("btn-go").addEventListener("click", function () {
+  var s = readStudent(); if (!s) return;
+  Sound.tone(1, "sine", .01, .0001);
+  G.student = s;
+  if (location.hash === "#boss") { startStage(1, true); return; }
+  showSelect();
+});
+$("form-start").addEventListener("submit", function (e) { e.preventDefault(); });
+$("btn-quit").addEventListener("click", function () { stopLoop(); stopBossTimer(); Confetti.stop(); MODE = null; GQ = null; $("c-cover").hidden = true; showSelect(); });
+
+/* =================== STAGE SELECT =================== */
+function showSelect() { show("scr-select"); paintSelect(); }
+function paintSelect() {
+  if (!G.student || $("scr-select").hidden) return;
+  var c = progress().cleared, pw = ownedPowers();
+  $("sel-hero").innerHTML = domArt("hero");
+  $("sel-who").textContent = G.student.name + " · " + G.student.cls + " · " + (G.lv === "hard" ? "Pure Chemistry" : "Combined Science");
+  $("sel-powers").innerHTML = pw.length ? pw.map(function (p) { return '<span class="pw-chip">' + esc(p.name) + "</span>"; }).join("") : '<span class="pw-chip none">NO POWERS YET</span>';
+  $("sel-grid").innerHTML = STAGES.map(function (s) {
+    var done = c.indexOf(s.id) >= 0;
+    return '<button type="button" class="scard' + (done ? " done" : "") + '" data-id="' + s.id + '"' + (s.ready ? "" : " disabled") + '><span class="num">' + s.id + '</span><span class="por">' + domArt(s.key) + '</span><span class="bn">' + esc(s.boss) + '</span><span class="tp">' + esc(s.title) + '</span><span class="gm">' + esc(s.game) + '</span><span class="stt">' + (!s.ready ? "COMING SOON" : done ? "CLEARED ✓" : "PLAY ▶") + "</span></button>";
+  }).join("");
+}
+$("sel-grid").addEventListener("click", function (e) { var b = e.target.closest(".scard"); if (!b || b.disabled) return; Sound.tap(); startStage(+b.dataset.id); });
+$("sel-back").addEventListener("click", function () { Sound.tap(); show("scr-start"); paintStart(); });
+
+function startStage(id, toBoss) {
+  STG = STAGES[id - 1];
+  G.points = 0; G.t0 = Date.now(); G.log = []; G.attempt = 0; B = null;
+  G.s1 = { right: 0, total: 0, bumps: 0, restarts: 0 };
+  if (toBoss) return startBoss();
+  if (id === 1) startSnake(); else if (id === 2) startBomb();
+}
+function logAnswer(phase, type, ok, err, text, picked, right) {
+  G.log.push({ phase: phase, type: type, ok: ok, err: err, text: text, picked: picked, right: right, attempt: G.attempt });
+  if (phase === "s1") { G.s1.total++; if (ok) G.s1.right++; }
+}
+function addPoints(n) { G.points += n; $("c-pts").textContent = G.points; }
+
+/* =================== SHARED CANVAS =================== */
+var W = 400, H = 500, cv = $("cv"), ctx = cv.getContext("2d"), SCALE = 1, raf2 = 0, lastT = 0, MODE = null;
+function startLoop() { stopLoop(); lastT = performance.now(); raf2 = requestAnimationFrame(loop); }
+function stopLoop() { cancelAnimationFrame(raf2); raf2 = 0; }
+function loop(t) {
+  var dt = Math.min(0.05, (t - lastT) / 1000); lastT = t;
+  if (!document.hidden && MODE === "snake") updSnake(dt);
+  if (!document.hidden && MODE === "bomb") updBomb(dt);
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) $("c-toast").hidden = true; }
+  if (MODE === "snake") drawSnake(); else if (MODE === "bomb") drawBomb();
+  raf2 = requestAnimationFrame(loop);
+}
+var toastT = 0;
+function toast(html, bad, secs) { var t = $("c-toast"); t.innerHTML = html; t.className = "toast" + (bad ? " bad" : "") + (MODE === "bomb" ? "" : " low"); t.hidden = false; toastT = secs || (bad ? 4.5 : 2.2); }
+function hideToast() { $("c-toast").hidden = true; toastT = 0; }
+function fit() {
+  if ($("scr-play").hidden) return;
+  var wrap = $("c-wrap").parentNode, cs = getComputedStyle(document.querySelector(".wrap"));
+  var side = getComputedStyle(wrap).display === "grid", padV = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  if (side) {
+    var aH = window.innerHeight - document.querySelector(".topbar").offsetHeight - padV - 12, aW = wrap.clientWidth - $("c-q").offsetWidth - 26;
+    return sizeCanvas(Math.max(0.45, Math.min(aW / W, aH / H, 2.4)));
+  }
+  var tb = document.querySelector(".topbar");
+  var others = (getComputedStyle(tb).position === "fixed" ? 0 : tb.offsetHeight) + $("c-hud").offsetHeight + $("c-q").offsetHeight +
+    ($("pad").offsetParent ? $("pad").offsetHeight : 0) + ($("keys").offsetParent ? $("keys").offsetHeight : 0) + padV + 8 * 3 + 6;
+  var availH = window.innerHeight - others, availW = wrap.clientWidth - 6;
+  sizeCanvas(Math.max(0.4, Math.min(availW / W, availH / H, 1.5)));
+}
+function sizeCanvas(sc) {
+  SCALE = sc;
+  var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  cv.style.width = Math.round(W * SCALE) + "px"; cv.style.height = Math.round(H * SCALE) + "px";
+  cv.width = Math.round(W * SCALE * dpr); cv.height = Math.round(H * SCALE * dpr);
+  ctx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
+}
+window.addEventListener("resize", function () { fit(); });
+function cover(html) {
+  var c = $("c-cover"); c.innerHTML = html; c.hidden = false; hideToast();
+  setTimeout(function () { var b = c.querySelector("button"); if (b) b.focus(); }, 50);
+}
+function uncover() { $("c-cover").hidden = true; }
+$("c-cover").addEventListener("click", function (e) { var b = e.target.closest("button[data-go]"); if (!b) return; Sound.tap(); uncover(); var f = COVER_ACT[b.dataset.go]; if (f) f(); });
+var COVER_ACT = {};
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function fitFont(txt, maxW, size, weight) { ctx.font = weight + " " + size + "px 'Open Sans', sans-serif"; while (size > 8 && ctx.measureText(txt).width > maxW) { size--; ctx.font = weight + " " + size + "px 'Open Sans', sans-serif"; } return size; }
+
+// input: keyboard, on-screen pad and swipes
+var KEYMAP = { ArrowLeft: "l", a: "l", A: "l", ArrowRight: "r", d: "r", D: "r", ArrowUp: "u", w: "u", W: "u", ArrowDown: "d", s: "d", S: "d" };
+document.addEventListener("keydown", function (e) {
+  if (!$("scr-boss").hidden) return bossKey(e);
+  if ($("scr-play").hidden || !$("c-cover").hidden) return;
+  if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+  if (MODE === "bomb") { var m = { 1: "Li", 2: "Na", 3: "K" }[e.key]; if (m) { e.preventDefault(); dropMetal(m); return; } }
+  var k = KEYMAP[e.key]; if (!k) return;
+  e.preventDefault(); if (e.repeat) return;
+  if (MODE === "bomb") bombHold(k); else steer(k);
+});
+document.addEventListener("keyup", function (e) { var k = KEYMAP[e.key]; if (k && MODE === "bomb") bombRelease(k); });
+window.addEventListener("blur", function () { if (BX) BX.held = null; });
+function setPad(kind) {
+  if (kind === "bomb") {
+    $("pad").className = "pad bomb";
+    $("pad").innerHTML = '<button type="button" data-k="l" aria-label="Left">◀</button><button type="button" data-k="u" aria-label="Up">▲</button><button type="button" data-k="d" aria-label="Down">▼</button><button type="button" data-k="r" aria-label="Right">▶</button>' +
+      '<button type="button" data-m="Li">Li<small>LITHIUM</small></button><button type="button" data-m="Na">Na<small>SODIUM</small></button><button type="button" data-m="K">K<small>POTASSIUM</small></button>';
+    $("keys").innerHTML = "<kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> move · drop <kbd>1</kbd> Li <kbd>2</kbd> Na <kbd>3</kbd> K";
+    return;
+  }
+  $("pad").className = "pad four";
+  $("pad").innerHTML = '<button type="button" data-k="l" aria-label="Left">◀</button><button type="button" data-k="u" aria-label="Up">▲</button><button type="button" data-k="d" aria-label="Down">▼</button><button type="button" data-k="r" aria-label="Right">▶</button>';
+  $("keys").innerHTML = "<kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> steer the snake";
+}
+(function pad() {
+  var p = $("pad");
+  var held = {};
+  p.addEventListener("pointerdown", function (e) {
+    var b = e.target.closest("button[data-k], button[data-m]"); if (!b) return;
+    e.preventDefault(); b.classList.add("on");
+    if (b.dataset.m) { dropMetal(b.dataset.m); setTimeout(function () { b.classList.remove("on"); }, 120); return; }
+    if (MODE === "bomb") { try { b.setPointerCapture(e.pointerId); } catch (x) {} held[e.pointerId] = b; bombHold(b.dataset.k); return; }
+    steer(b.dataset.k); setTimeout(function () { b.classList.remove("on"); }, 120);
+  });
+  function up(e) { var b = held[e.pointerId]; if (!b) return; delete held[e.pointerId]; b.classList.remove("on"); bombRelease(b.dataset.k); }
+  p.addEventListener("pointerup", up); p.addEventListener("pointercancel", up); p.addEventListener("lostpointercapture", up);
+  p.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  var sw = null;
+  cv.addEventListener("pointerdown", function (e) { sw = { x: e.clientX, y: e.clientY, id: e.pointerId, done: false }; e.preventDefault(); });
+  cv.addEventListener("pointermove", function (e) {
+    if (!sw || sw.id !== e.pointerId || sw.done) return;
+    var dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 18) return;
+    steer(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "r" : "l") : (dy > 0 ? "d" : "u"));
+    sw = { x: e.clientX, y: e.clientY, id: e.pointerId, done: false }; // allow chained swipes without lifting
+  });
+  cv.addEventListener("pointerup", function () { sw = null; });
+  cv.addEventListener("pointercancel", function () { sw = null; });
+})();
+
+/* =================== STAGE 1: TREND SNAKE =================== */
+var COLS = 8, ROWS = 10, CELL = 50, S = null;
+var DIRS = { l: { x: -1, y: 0 }, r: { x: 1, y: 0 }, u: { x: 0, y: -1 }, d: { x: 0, y: 1 } };
+function startSnake() {
+  MODE = "snake"; show("scr-play"); setPad("snake");
+  S = { ri: 0, hearts: SNAKE_HEARTS, run: false, tiles: [], parts: [], snake: [], q: null, qs: [], qi: 0 };
+  paintHud(); $("c-q").innerHTML = '<p class="qhead">STAGE 1 · TREND SNAKE</p><p class="qtext">Get ready…</p>';
+  resetSnake();
+  startLoop(); fit();
+  COVER_ACT.r0 = function () { beginRound(0); };
+  cover('<div style="width:96px">' + domArt("trend") + '</div><p class="lvname">STAGE 1 · PERIODIC TRENDS</p><h2>TREND SNAKE</h2>' +
+    '<p class="why">"' + esc(STG.taunt) + '"</p><p class="tagline">— ' + esc(STG.boss) + "</p>" +
+    "<ul><li>Steer the snake into the right element tiles.</li><li>Wrong tile or bumping into yourself costs a ♥.</li><li>The edges wrap around, so you can't hit a wall.</li><li>Clear 3 rounds, then fight " + esc(STG.boss) + ".</li></ul>" +
+    '<p><b>Phone/iPad:</b> swipe on the screen or use the arrows. <b>Laptop:</b> arrow keys.</p><div class="row"><button class="pbtn" type="button" data-go="r0">START ▶</button></div>');
+}
+function paintHud(breakIdx) {
+  var R = ROUNDS[S.ri];
+  $("c-lv").innerHTML = "STAGE 1 · TREND SNAKE<span>ROUND " + (S.ri + 1) + "/3 · " + R.name + "</span>";
+  $("c-hearts").innerHTML = heartsHTML(S.hearts, SNAKE_HEARTS, breakIdx);
+  $("c-pts").textContent = G.points;
+}
+function resetSnake() {
+  S.snake = [{ x: 3, y: 6 }, { x: 3, y: 7 }, { x: 3, y: 8 }];
+  S.dir = { x: 0, y: -1 }; S.queue = []; S.grow = 0; S.inv = 0; S.acc = 0;
+}
+function beginRound(ri) {
+  S.ri = ri; S.hearts = SNAKE_HEARTS; S.tiles = []; S.qi = 0; S.pending = 0;
+  var R = ROUNDS[ri];
+  S.qs = R.kind === "seq" ? seqPrompts() : R.kind === "pick" ? pickPrompts(G.lv) : placeQs();
+  resetSnake(); paintHud();
+  cover('<p class="lvname">ROUND ' + (ri + 1) + ' OF 3</p><h2>' + R.name + '</h2><p class="why">' + R.tip + "</p>" + roundExample(R.kind) + '<div class="row"><button class="pbtn" type="button" data-go="go">GO ▶</button></div>');
+  COVER_ACT.go = function () { setupQ(); S.run = true; S.ready = 1.0; };
+}
+function roundExample(kind) {
+  if (kind === "seq") return '<div class="eg"><span>F</span><span>→</span><span>Cl</span><span>→</span><span>Br</span><span>→</span><span>I</span></div><p class="why">Group 17 going down. A period goes left to right, e.g. Na → Mg → Al.</p>';
+  if (kind === "pick") return '<div class="eg"><span>¹²Mg → 2,8,2</span></div><p class="why">12 electrons: 2,8,2 → 2 valence electrons → a Group 2 metal.</p>';
+  return '<div class="eg"><span>2,8,3</span><span>→</span><span>Period 3 · Group 13</span></div>';
+}
+function setupQ() {
+  var R = ROUNDS[S.ri], q = S.q = S.qs[S.qi]; S.tiles = [];
+  if (R.kind === "seq") q.order.concat(q.bad).forEach(function (e) { addTile({ e: e, big: e.s }); });
+  else if (R.kind === "pick") q.good.concat(q.bad).forEach(function (e) { addTile({ e: e, big: e.s, sub: String(e.z), subPos: "tl" }); });
+  else q.opts.forEach(function (o) { addTile({ opt: o, big: o.t, place: true }); });
+  paintQ();
+}
+function paintQ() {
+  var R = ROUNDS[S.ri], q = S.q, h = '<p class="qhead">ROUND ' + (S.ri + 1) + "/3 · " + R.name + " · " + (S.qi + 1) + "/" + S.qs.length + "</p>";
+  if (R.kind === "seq") {
+    h += '<p class="qtext">' + q.text + '</p><p class="qhint">' + q.order.length + " to find. Eaten: " +
+      (q.done ? q.order.slice(0, q.done).map(function (e) { return e.s; }).join(" → ") : "none yet") + "</p>";
+  } else if (R.kind === "pick") {
+    h += '<p class="qtext">' + q.P.text + '</p><p class="qhint">Small number = proton number. Found ' + q.found + " of " + q.good.length + ".</p>";
+  } else h += '<p class="qtext">' + q.text + "</p>";
+  $("c-q").innerHTML = h; fit();
+}
+function addTile(t) { var c = freeCell(); if (!c) return; t.x = c.x; t.y = c.y; t.pop = 0; S.tiles.push(t); }
+function freeCell() {
+  var h = S.snake[0], ahead = [], cells = [], relaxed = [];
+  for (var i = 1; i <= 3; i++) ahead.push(((h.x + S.dir.x * i) + COLS) % COLS + "," + ((h.y + S.dir.y * i) + ROWS) % ROWS);
+  for (var x = 0; x < COLS; x++) for (var y = 0; y < ROWS; y++) {
+    var busy = S.snake.some(function (s) { return s.x === x && s.y === y; }) || S.tiles.some(function (t) { return t.x === x && t.y === y; });
+    if (busy) continue;
+    relaxed.push({ x: x, y: y });
+    if (Math.abs(x - h.x) + Math.abs(y - h.y) <= 2 || ahead.indexOf(x + "," + y) >= 0) continue;
+    // keep tiles apart so each choice is deliberate
+    if (S.tiles.some(function (t) { return Math.abs(t.x - x) + Math.abs(t.y - y) < 2; })) continue;
+    cells.push({ x: x, y: y });
+  }
+  return cells.length ? pick(cells) : relaxed.length ? pick(relaxed) : null;
+}
+function steer(k) {
+  if (MODE === "bomb") { if (BX) tryMove(DIRS[k]); return; }
+  if (!S || MODE !== "snake") return;
+  var d = DIRS[k], last = S.queue.length ? S.queue[S.queue.length - 1] : S.dir;
+  if ((d.x === -last.x && d.y === -last.y) || (d.x === last.x && d.y === last.y)) return;
+  if (S.queue.length < 2) S.queue.push(d);
+  Sound.move();
+}
+function updSnake(dt) {
+  S.parts = S.parts.filter(function (p) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; return p.t < .7; });
+  S.tiles.forEach(function (t) { if (t.pop < 1) t.pop = Math.min(1, t.pop + dt * 4); });
+  if (!S.run) return;
+  if (S.ready > 0) { S.ready -= dt; return; }
+  if (S.inv > 0) S.inv -= dt;
+  if (S.pending > 0) { S.pending -= dt; if (S.pending <= 0) setupQ(); }
+  S.acc += dt * 1000;
+  var step = SNAKE_STEP_MS[S.ri];
+  while (S.acc >= step && S.run) { S.acc -= step; stepSnake(); }
+}
+function stepSnake() {
+  if (S.queue.length) S.dir = S.queue.shift();
+  var h = S.snake[0], nx = (h.x + S.dir.x + COLS) % COLS, ny = (h.y + S.dir.y + ROWS) % ROWS;
+  var body = S.snake.slice(0, S.snake.length - (S.grow > 0 ? 0 : 1));
+  if (S.inv <= 0 && body.some(function (s) { return s.x === nx && s.y === ny; })) {
+    G.s1.bumps++; S.snake = S.snake.slice(0, 3); S.grow = 0; S.inv = 1.6;
+    toast("<b>Ouch!</b> You bumped into yourself.", true, 2);
+    if (loseHeart()) return;
+  }
+  S.snake.unshift({ x: nx, y: ny });
+  if (S.grow > 0) S.grow--; else S.snake.pop();
+  var ti = -1; S.tiles.forEach(function (t, i) { if (t.x === nx && t.y === ny) ti = i; });
+  if (ti >= 0) eat(S.tiles[ti], ti);
+}
+function burst(t, col) { var cx = t.x * CELL + CELL / 2, cy = t.y * CELL + CELL / 2; for (var i = 0; i < 16; i++) S.parts.push({ x: cx, y: cy, vx: (Math.random() - .5) * 240, vy: -Math.random() * 220, t: 0, c: col || pick(["#4CF08A", "#FCE883", "#fff"]) }); }
+function loseHeart() {
+  S.hearts--; Sound.hurt(); paintHud(S.hearts);
+  if (S.hearts > 0) return false;
+  S.run = false; G.s1.restarts++;
+  COVER_ACT.retry = function () { beginRound(S.ri); };
+  setTimeout(function () {
+    cover('<h2 class="red">OUT OF HEARTS!</h2><p>' + esc(STG.boss) + ' laughs as your snake curls up. Read the tips, then try this round again.</p><div class="row"><button class="pbtn" type="button" data-go="retry">RETRY ROUND ↻</button></div>');
+  }, 900);
+  return true;
+}
+function eat(t, ti) {
+  var R = ROUNDS[S.ri], q = S.q;
+  if (R.kind === "seq") {
+    var want = q.order[q.done], text = q.sq.label + (q.sq.kind === "group" ? " down the group" : " left to right") + ": " + q.order.map(function (e) { return e.s; }).join(" → ");
+    var member = q.order.indexOf(t.e) >= 0, dirTxt = q.sq.kind === "group" ? "Going down the group" : "From left to right";
+    if (t.e === want) {
+      S.tiles.splice(ti, 1); q.done++; S.grow += 1; addPoints(50); Sound.ok(); burst(t);
+      logAnswer("s1", "sequence", true, null, text, t.e.s, want.s);
+      toast("<b>" + t.e.s + "</b> (" + t.e.name + "), proton number " + t.e.z + ".", false, 1.6);
+      if (q.done >= q.order.length) return qDone();
+      paintQ();
+    } else if (member) {
+      logAnswer("s1", "sequence", false, "sequence", text, t.e.s + " before " + want.s, want.s);
+      toast("<b>Not yet!</b> " + dirTxt + ", " + want.s + " (proton number " + want.z + ") comes before " + t.e.s + " (proton number " + t.e.z + ").", true, 4.5);
+      Sound.bad(); burst(t, "#FF4D5E");
+      S.tiles.splice(ti, 1); var c = freeCell(); if (c) { t.x = c.x; t.y = c.y; t.pop = 0; S.tiles.push(t); } // tile hops away
+      loseHeart();
+    } else {
+      S.tiles.splice(ti, 1);
+      var g = q.sq.kind === "group";
+      logAnswer("s1", g ? "group" : "place", false, g ? "group" : "place", text, t.e.s, want.s);
+      toast("<b>Doesn't belong!</b> " + cap(t.e.name) + " is in " + (g ? inGroupTxt(t.e) : "Period " + t.e.period) + ", not " + q.sq.label + ".", true, 4.5);
+      Sound.bad(); burst(t, "#FF4D5E");
+      loseHeart();
+    }
+    return;
+  }
+  if (R.kind === "pick") {
+    var ok = q.P.ok(t.e);
+    S.tiles.splice(ti, 1);
+    logAnswer("s1", q.P.type, ok, ok ? null : q.P.err, stripB(q.P.text), t.e.s + " (" + t.e.cfg + ")", q.good.map(function (e) { return e.s; }).join(", "));
+    if (ok) {
+      q.found++; S.grow += 1; addPoints(50); Sound.ok(); burst(t);
+      toast("<b>Yes!</b> " + esc(q.P.why(t.e)), false, 2);
+      if (q.found >= q.good.length) return qDone();
+      paintQ();
+    } else {
+      Sound.bad(); burst(t, "#FF4D5E");
+      toast("<b>Wrong one.</b> " + esc(q.P.why(t.e)), true, 4.5);
+      loseHeart();
+    }
+    return;
+  }
+  // place
+  var first = q.tries === 0; q.tries++;
+  S.tiles.splice(ti, 1);
+  if (first) logAnswer("s1", "place", t.opt.ok, t.opt.ok ? null : "place", stripB(q.text), t.opt.t.replace("\n", " "), q.right);
+  if (t.opt.ok) {
+    S.grow += 2; addPoints(first ? 100 : 40); Sound.ok(); burst(t);
+    toast("<b>" + (first ? "First try!" : "Got it!") + "</b> " + esc(q.why), false, 3);
+    return qDone();
+  }
+  Sound.bad(); burst(t, "#FF4D5E");
+  toast("<b>Not that one.</b> " + esc(q.why), true, 5);
+  loseHeart();
+}
+function stripB(h) { return h.replace(/<[^>]+>/g, ""); }
+function qDone() {
+  Sound.clear(); S.qi++; S.tiles = [];
+  if (S.qi < S.qs.length) { S.pending = 0.8; $("c-q").querySelector(".qtext").innerHTML = "<b>Cleared!</b> Next one coming…"; return; }
+  S.run = false;
+  var last = S.ri === ROUNDS.length - 1;
+  COVER_ACT.next = function () { if (last) startBoss(); else beginRound(S.ri + 1); };
+  setTimeout(function () {
+    Sound.level();
+    cover(last ? '<div style="width:96px">' + domArt("trend") + '</div><h2>STAGE CLEAR!</h2><p>Your snake ate ' + G.s1.right + " of " + G.s1.total + ' right. Now ' + esc(STG.boss) + ' wants a fight!</p><p class="why">Answer before his attack charges up. Each correct answer hits him once.</p><div class="row"><button class="pbtn" type="button" data-go="next">FIGHT ▶</button></div>'
+      : '<h2>ROUND CLEAR!</h2><p>' + ROUNDS[S.ri].name + " done. Points: " + G.points + '.</p><div class="row"><button class="pbtn" type="button" data-go="next">NEXT ROUND ▶</button></div>');
+  }, 500);
+}
+function drawSnake() {
+  ctx.fillStyle = "#0D0B1A"; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(46,242,224,.10)"; ctx.lineWidth = 1;
+  for (var x = 1; x < COLS; x++) { ctx.beginPath(); ctx.moveTo(x * CELL, 0); ctx.lineTo(x * CELL, H); ctx.stroke(); }
+  for (var y = 1; y < ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * CELL); ctx.lineTo(W, y * CELL); ctx.stroke(); }
+  // tiles
+  S.tiles.forEach(function (t) {
+    var s = 0.6 + 0.4 * t.pop, w = 44 * s, cx = t.x * CELL + CELL / 2, cy = t.y * CELL + CELL / 2;
+    ctx.save(); ctx.translate(cx, cy);
+    rr(-w / 2, -w / 2, w, w, 7); ctx.fillStyle = t.place ? "#2A2448" : "#19152E"; ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = t.place ? "#FCE883" : "#2EF2E0"; ctx.stroke();
+    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    if (t.place && t.big.indexOf("\n") >= 0) {
+      var ls = t.big.split("\n"); ctx.font = "800 " + Math.round(14 * s) + "px 'Open Sans', sans-serif";
+      ctx.fillText(ls[0], 0, -8 * s); ctx.fillStyle = "#FCE883"; ctx.fillText(ls[1], 0, 9 * s);
+    } else if (t.place) {
+      fitFont(t.big, 38 * s, Math.round(15 * s), 800); ctx.fillText(t.big, 0, 1);
+    } else {
+      ctx.font = "800 " + Math.round((t.sub ? 19 : 22) * s) + "px 'Open Sans', sans-serif"; ctx.fillText(t.big, 0, t.sub ? 3 * s : 1);
+      if (t.sub) {
+        ctx.font = "700 " + Math.round(10 * s) + "px 'Open Sans', sans-serif"; ctx.fillStyle = "#FCE883";
+        ctx.textAlign = "left"; ctx.fillText(t.sub, -w / 2 + 4, -w / 2 + 8);
+      }
+    }
+    ctx.restore();
+  });
+  // snake
+  var blink = S.inv > 0 && Math.floor(S.inv * 8) % 2 === 0;
+  if (!blink) for (var i = S.snake.length - 1; i >= 0; i--) {
+    var sg = S.snake[i], px = sg.x * CELL, py = sg.y * CELL, head = i === 0, pad = head ? 3 : 6;
+    rr(px + pad, py + pad, CELL - pad * 2, CELL - pad * 2, head ? 10 : 8);
+    ctx.fillStyle = head ? "#4CF08A" : (i % 2 ? "#2FC56C" : "#38D97A"); ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = "#0D0B1A"; ctx.stroke();
+    if (head) {
+      var d = S.dir, ex = px + CELL / 2 + d.x * 8, ey = py + CELL / 2 + d.y * 8, ox = d.y !== 0 ? 9 : 0, oy = d.x !== 0 ? 9 : 0;
+      [[ex - ox, ey - oy], [ex + ox, ey + oy]].forEach(function (p) {
+        ctx.fillStyle = "#fff"; ctx.fillRect(p[0] - 5, p[1] - 5, 10, 10);
+        ctx.fillStyle = "#0D0B1A"; ctx.fillRect(p[0] - 2 + d.x * 2, p[1] - 2 + d.y * 2, 5, 5);
+      });
+    }
+  }
+  S.parts.forEach(function (p) { ctx.globalAlpha = 1 - p.t / .7; ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 6, 6); }); ctx.globalAlpha = 1;
+  if (S.run && S.ready > 0) {
+    ctx.fillStyle = "rgba(13,11,26,.55)"; ctx.fillRect(0, H / 2 - 40, W, 80);
+    ctx.fillStyle = "#FCE883"; ctx.font = "20px 'Press Start 2P', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("READY?", W / 2, H / 2);
+  }
+}
+
+
+/* =================== STAGE 2: ALKALI BLAST =================== */
+var BX = null;
+function startBomb() {
+  MODE = "bomb"; show("scr-play"); setPad("bomb");
+  BX = { ri: 0, run: false, parts: [], blasts: [], g: null, hearts: SNAKE_HEARTS };
+  G.s1.perfect = 0; G.s1.overkill = 0; G.s1.weak = 0; G.s1.hurt = 0;
+  makeRoom(0); paintBombHud();
+  $("c-q").innerHTML = '<p class="qhead">STAGE 2 · ALKALI BLAST</p><p class="qtext">Get ready…</p>';
+  startLoop(); fit();
+  COVER_ACT.b0 = function () { beginRoom(0); };
+  cover('<div style="width:96px">' + domArt("alkali") + '</div><p class="lvname">STAGE 2 · GROUP 1: ALKALI METALS</p><h2>ALKALI BLAST</h2>' +
+    '<p class="why">"' + esc(STG.taunt) + '"</p><p class="tagline">— ' + esc(STG.boss) + "</p>" +
+    "<ul><li>Break the walls to reach the door.</li><li>Stand on a puddle and drop a Group 1 metal into the water. Then run! The reaction blasts the squares next to the puddle.</li>" +
+    "<li>Use the <b>least reactive</b> metal that will break the wall. Too weak and nothing breaks; too strong wastes points.</li><li>Answer the door questions to move to the next room.</li></ul>" +
+    '<p><b>Phone/iPad:</b> arrows to move, Li / Na / K buttons to drop. <b>Laptop:</b> arrow keys, then 1, 2 or 3.</p><div class="row"><button class="pbtn" type="button" data-go="b0">START ▶</button></div>');
+}
+function paintBombHud(breakIdx) {
+  $("c-lv").innerHTML = "STAGE 2 · ALKALI BLAST<span>ROOM " + (BX.ri + 1) + "/3</span>";
+  $("c-hearts").innerHTML = heartsHTML(BX.hearts, SNAKE_HEARTS, breakIdx);
+  $("c-pts").textContent = G.points;
+}
+function makeRoom(ri) {
+  // 8 × 10 grid. Rows 2, 4 and 6 are barriers, each with one breakable wall and a puddle just below it.
+  var str = ri === 0 ? [3, 2, 1] : shuffle([1, 2, 3]), g = [], cols = [];
+  for (var y = 0; y < ROWS; y++) { g.push([]); for (var x = 0; x < COLS; x++) g[y].push(x === 0 || x === COLS - 1 || y === 0 || y === ROWS - 1 ? "#" : "."); }
+  [2, 4, 6].forEach(function (r, i) {
+    for (var x = 1; x < COLS - 1; x++) g[r][x] = "#";
+    var c; do { c = rint(1, COLS - 2); } while (i && c === cols[i - 1]);
+    cols.push(c); g[r][c] = str[i]; g[r + 1][c] = "~";
+  });
+  g[1][rint(1, COLS - 2)] = "D";
+  var px; do { px = rint(1, COLS - 2); } while (g[8][px] !== ".");
+  BX.g = g; BX.px = px; BX.py = 8; BX.dx = px; BX.dy = 8; BX.bomb = null; BX.blasts = []; BX.held = null; BX.rep = 0; BX.inv = 0; BX.face = 1;
+  BX.sparks = [];
+  for (var n = 0; n < ri; n++) { // sparks: 1 in room 2, 2 in room 3
+    var rows = [3, 5, 7], rr2 = rows[n % 3], sx; do { sx = rint(1, COLS - 2); } while (g[rr2][sx] !== "." || (rr2 === 7 && Math.abs(sx - px) < 2));
+    BX.sparks.push({ x: sx, y: rr2, t: Math.random() * .5 });
+  }
+}
+function beginRoom(ri) {
+  BX.ri = ri; BX.hearts = SNAKE_HEARTS; makeRoom(ri); paintBombHud();
+  var intro = ri === 0
+    ? '<p class="why">Reactivity with water increases <b>down</b> Group 1:</p><div class="eg"><span>Li</span><span>&lt;</span><span>Na</span><span>&lt;</span><span>K</span></div><div class="walls"><span style="color:#E0A27A">CLAY ▮</span><span style="color:#FF8A7A">BRICK ▮▮</span><span style="color:#C9D2DE">STEEL ▮▮▮</span></div><p class="why">Weakest wall: least reactive metal. Strongest wall: most reactive metal.</p>'
+    : ri === 1 ? '<p class="why">The walls are in a new order, and a spark is on the loose. Touching it costs a ♥, but a blast destroys it.</p>'
+    : '<p class="why">Last room! Two sparks. Beyond the door is the final question, then Blaze Alkali.</p>';
+  cover('<p class="lvname">ROOM ' + (ri + 1) + ' OF 3</p><h2>' + ["THE CLAY LAB", "THE BRICK LAB", "THE STEEL LAB"][ri] + "</h2>" + intro + '<div class="row"><button class="pbtn" type="button" data-go="bgo">GO ▶</button></div>');
+  COVER_ACT.bgo = function () { BX.run = true; BX.ready = 0.8; paintBombQ(); };
+}
+function paintBombQ(extra) {
+  $("c-q").innerHTML = '<p class="qhead">ROOM ' + (BX.ri + 1) + "/3 · BREAK THROUGH TO THE DOOR</p>" +
+    '<p class="qtext">Stand on a <b>puddle</b>, drop the <b>least reactive</b> metal that breaks the wall, then step away!</p>' +
+    '<p class="qhint">' + (extra || "CLAY ▮ · BRICK ▮▮ · STEEL ▮▮▮") + "</p>";
+  fit();
+}
+function cellAt(x, y) { return BX.g[y] && BX.g[y][x]; }
+function walkable(x, y) { var c = cellAt(x, y); return c === "." || c === "~" || c === "D"; }
+function bombHold(k) { if (!BX || MODE !== "bomb") return; BX.held = DIRS[k]; BX.rep = 0; }
+function bombRelease(k) { if (BX && BX.held === DIRS[k]) BX.held = null; }
+function tryMove(d) {
+  if (!BX.run || BX.ready > 0) return;
+  var nx = BX.px + d.x, ny = BX.py + d.y;
+  if (d.x) BX.face = d.x;
+  if (!walkable(nx, ny)) return;
+  if (BX.bomb && BX.bomb.x === nx && BX.bomb.y === ny) return;
+  BX.px = nx; BX.py = ny; Sound.move();
+  checkSparkHit();
+  if (cellAt(nx, ny) === "D") roomDone();
+}
+function dropMetal(m) {
+  if (!BX || MODE !== "bomb" || !BX.run || BX.ready > 0) return;
+  if (BX.bomb) { toast("<b>Wait!</b> Let the reaction finish first.", true, 1.6); return; }
+  if (cellAt(BX.px, BX.py) !== "~") { toast("<b>No water here!</b> Group 1 metals react with water. Stand on a puddle first.", true, 2.5); Sound.bad(); return; }
+  BX.bomb = { x: BX.px, y: BX.py, m: m, t: FUSE_SECS }; Sound.tone(500, "square", .08, .05, 0, 900);
+}
+function blastCells(x, y) { return [[x, y], [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].filter(function (c) { return c[0] >= 0 && c[0] < COLS && c[1] >= 0 && c[1] < ROWS; }); }
+function explode() {
+  var b = BX.bomb, M = MET[b.m], cells = blastCells(b.x, b.y), wall = null; BX.bomb = null;
+  cells.forEach(function (c) { var v = cellAt(c[0], c[1]); if (typeof v === "number") wall = { x: c[0], y: c[1], s: v }; });
+  BX.blasts.push({ cells: cells, t: 0, col: M.col });
+  Sound.smash();
+  cells.forEach(function (c) { for (var i = 0; i < 5; i++) BX.parts.push({ x: c[0] * CELL + CELL / 2, y: c[1] * CELL + CELL / 2, vx: (Math.random() - .5) * 200, vy: -Math.random() * 180, t: 0, c: pick([M.col, "#fff", "#2F7BFF"]) }); });
+  // sparks caught in the blast
+  BX.sparks = BX.sparks.filter(function (s) { var hit = cells.some(function (c) { return c[0] === s.x && c[1] === s.y; }); if (hit) { addPoints(50); toast("<b>Spark destroyed!</b> +50", false, 1.4); } return !hit; });
+  if (wall) {
+    var text = "Which metal breaks a " + WALL_NAME[wall.s].toLowerCase() + " wall (" + "▮▮▮".slice(0, wall.s) + ")?", right = ["Li", "Na", "K"][wall.s - 1];
+    if (M.p >= wall.s) BX.g[wall.y][wall.x] = ".";
+    if (M.p === wall.s) { G.s1.perfect++; addPoints(100); logAnswer("s1", "react", true, null, text, b.m, right); toast("<b>Perfect!</b> " + M.obs + " Just enough to break the " + WALL_NAME[wall.s].toLowerCase() + " wall.", false, 3.2); }
+    else if (M.p > wall.s) { G.s1.overkill++; addPoints(20); logAnswer("s1", "react", false, "overkill", text, b.m, right); toast("<b>Overkill!</b> " + M.obs + " " + cap(M.name) + " is more reactive than this wall needs. Try " + MET[right].name + ".", true, 4.5); }
+    else { G.s1.weak++; logAnswer("s1", "react", false, "weak", text, b.m, right); toast("<b>Not reactive enough!</b> " + M.obs + " The " + WALL_NAME[wall.s].toLowerCase() + " wall needs a more reactive metal. Li &lt; Na &lt; K.", true, 4.5); Sound.bad(); }
+  } else toast(M.obs, false, 2.4);
+  if (BX.inv <= 0 && cells.some(function (c) { return c[0] === BX.px && c[1] === BX.py; })) {
+    setTimeout(function () { toast("<b>Too close!</b> Step out of the blast before it goes off.", true, 2.6); }, 50);
+    hurtPlayer();
+  }
+}
+function hurtPlayer() {
+  if (BX.inv > 0) return;
+  BX.inv = 1.5; BX.hearts--; G.s1.hurt++; Sound.hurt(); paintBombHud(BX.hearts);
+  if (BX.hearts > 0) return;
+  BX.run = false; G.s1.restarts++;
+  COVER_ACT.bretry = function () { beginRoom(BX.ri); };
+  setTimeout(function () { cover('<h2 class="red">OUT OF HEARTS!</h2><p>' + esc(STG.boss) + ' cackles. The room resets with a new layout.</p><div class="row"><button class="pbtn" type="button" data-go="bretry">RETRY ROOM ↻</button></div>'); }, 800);
+}
+function checkSparkHit() { if (BX.sparks.some(function (s) { return s.x === BX.px && s.y === BX.py; })) { toast("<b>Zap!</b> A spark got you.", true, 1.8); hurtPlayer(); } }
+function moveSparks() {
+  BX.sparks.forEach(function (s) {
+    var opts = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(function (d) { var x = s.x + d[0], y = s.y + d[1]; return walkable(x, y) && cellAt(x, y) !== "D" && !(BX.bomb && BX.bomb.x === x && BX.bomb.y === y); });
+    if (opts.length) { var d = pick(opts); s.x += d[0]; s.y += d[1]; }
+  });
+  checkSparkHit();
+}
+function updBomb(dt) {
+  BX.parts = BX.parts.filter(function (p) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; return p.t < .7; });
+  BX.blasts = BX.blasts.filter(function (b) { b.t += dt; return b.t < .45; });
+  BX.dx += (BX.px - BX.dx) * Math.min(1, dt * 18); BX.dy += (BX.py - BX.dy) * Math.min(1, dt * 18);
+  if (!BX.run) return;
+  if (BX.ready > 0) { BX.ready -= dt; return; }
+  if (BX.inv > 0) BX.inv -= dt;
+  if (BX.held) { BX.rep -= dt; if (BX.rep <= 0) { tryMove(BX.held); BX.rep = 0.17; } }
+  if (BX.bomb) { BX.bomb.t -= dt; if (BX.bomb.t <= 0) explode(); }
+  BX.sparks.forEach(function (s) { s.t += dt; });
+  if (BX.sparks.length && BX.sparks[0].t >= 0.6) { BX.sparks.forEach(function (s) { s.t = 0; }); moveSparks(); }
+}
+function roomDone() {
+  BX.run = false; BX.held = null; Sound.clear(); addPoints(100);
+  var gate = GATES[BX.ri], qs = gate.qs(), last = BX.ri === 2;
+  setTimeout(function () {
+    gateQuiz(gate.name, qs, function () {
+      if (last) {
+        Sound.level();
+        COVER_ACT.bfight = function () { startBoss(); };
+        cover('<div style="width:96px">' + domArt("alkali") + '</div><h2>STAGE CLEAR!</h2><p>Perfect blasts: ' + G.s1.perfect + ". Overkill: " + G.s1.overkill + ". Too weak: " + G.s1.weak + '.</p><p>Now ' + esc(STG.boss) + ' wants a fight!</p><p class="why">Answer before his attack charges up. Each correct answer hits him once.</p><div class="row"><button class="pbtn" type="button" data-go="bfight">FIGHT ▶</button></div>');
+      } else beginRoom(BX.ri + 1);
+    });
+  }, 400);
+}
+// door / gate questions shown on the cover (also used between rooms)
+var GQ = null;
+function gateQuiz(name, qs, done) { GQ = { name: name, qs: qs, i: 0, done: done }; showGateQ(); }
+function showGateQ() {
+  var raw = GQ.qs[GQ.i], opts = shuffle(raw.opts.map(function (o) { return { t: o[0], ok: o[1] === true, err: o[1] === true ? null : o[1] }; }));
+  GQ.cur = { raw: raw, opts: opts, right: opts.filter(function (o) { return o.ok; })[0].t };
+  cover('<p class="lvname">' + esc(GQ.name) + " · QUESTION " + (GQ.i + 1) + " OF " + GQ.qs.length + '</p><h2>DOOR LOCKED</h2><p class="bigq">' + esc(raw.q) + '</p><div class="cq">' +
+    opts.map(function (o, i) { return '<button type="button" class="qopt" data-gq="' + i + '"><span class="k">' + "ABCD"[i] + '</span><span class="tx">' + esc(o.t) + "</span></button>"; }).join("") + '</div><div id="gq-fb"></div>');
+}
+$("c-cover").addEventListener("click", function (e) {
+  var b = e.target.closest("button[data-gq]"); if (!b || !GQ || GQ.locked) return;
+  GQ.locked = true;
+  var i = +b.dataset.gq, o = GQ.cur.opts[i], btns = $("c-cover").querySelectorAll("button[data-gq]");
+  GQ.cur.opts.forEach(function (op, j) { btns[j].disabled = true; if (op.ok) btns[j].classList.add("right"); });
+  if (!o.ok) btns[i].classList.add("wrong");
+  logAnswer("s1", GQ.cur.raw.type, o.ok, o.err, GQ.cur.raw.q, o.t, GQ.cur.right);
+  if (o.ok) { addPoints(80); Sound.ok(); } else Sound.bad();
+  $("gq-fb").innerHTML = '<div class="cfb' + (o.ok ? "" : " no") + '"><b>' + (o.ok ? "Correct!" : esc(ERR[o.err].label) + ".") + "</b> " + (o.ok ? "" : "Answer: " + esc(GQ.cur.right) + ". ") + esc(GQ.cur.raw.why) + '</div><div class="row" style="margin-top:10px"><button class="pbtn" type="button" id="gq-next">' + (GQ.i + 1 < GQ.qs.length ? "NEXT ▶" : "OPEN THE DOOR ▶") + "</button></div>";
+  setTimeout(function () { var n = $("gq-next"); if (n) n.focus(); }, 50);
+});
+$("c-cover").addEventListener("click", function (e) {
+  if (!e.target.closest("#gq-next")) return;
+  Sound.tap(); GQ.locked = false; GQ.i++;
+  if (GQ.i < GQ.qs.length) showGateQ(); else { uncover(); var d = GQ.done; GQ = null; d(); }
+});
+function drawWall(x, y, s, cracked) {
+  var px = x * CELL, py = y * CELL;
+  var col = { 1: ["#B9774E", "#8A5434"], 2: ["#C0504D", "#7E2E2C"], 3: ["#8E9AAF", "#5B6576"] }[s];
+  ctx.fillStyle = col[0]; ctx.fillRect(px + 2, py + 2, CELL - 4, CELL - 4);
+  ctx.strokeStyle = col[1]; ctx.lineWidth = 2;
+  if (s === 1) { ctx.beginPath(); ctx.moveTo(px + 12, py + 10); ctx.lineTo(px + 22, py + 24); ctx.lineTo(px + 16, py + 38); ctx.moveTo(px + 34, py + 12); ctx.lineTo(px + 30, py + 26); ctx.stroke(); }
+  else if (s === 2) { for (var r = 0; r < 3; r++) { ctx.strokeRect(px + 2, py + 2 + r * 15, CELL - 4, 15); ctx.beginPath(); var off = r % 2 ? 12 : 24; ctx.moveTo(px + off, py + 2 + r * 15); ctx.lineTo(px + off, py + 17 + r * 15); ctx.stroke(); } }
+  else { ctx.strokeRect(px + 5, py + 5, CELL - 10, CELL - 10); ctx.fillStyle = col[1]; [[9, 9], [37, 9], [9, 37], [37, 37]].forEach(function (p) { ctx.fillRect(px + p[0], py + p[1], 4, 4); }); }
+  ctx.fillStyle = "#0D0B1A"; for (var i = 0; i < s; i++) ctx.fillRect(px + CELL / 2 - (s * 8 - 2) / 2 + i * 8, py + CELL / 2 - 6, 6, 12);
+  ctx.fillStyle = "#fff"; for (i = 0; i < s; i++) ctx.fillRect(px + CELL / 2 - (s * 8 - 2) / 2 + i * 8 + 1, py + CELL / 2 - 5, 4, 10);
+}
+function drawBomb() {
+  var g = BX.g, t = performance.now() / 1000;
+  ctx.fillStyle = "#0D0B1A"; ctx.fillRect(0, 0, W, H);
+  for (var y = 0; y < ROWS; y++) for (var x = 0; x < COLS; x++) {
+    var c = g[y][x], px = x * CELL, py = y * CELL;
+    ctx.fillStyle = (x + y) % 2 ? "#19152E" : "#1E1938"; ctx.fillRect(px, py, CELL, CELL);
+    if (c === "#") { ctx.fillStyle = "#2A2448"; ctx.fillRect(px, py, CELL, CELL); ctx.strokeStyle = "#3A3366"; ctx.lineWidth = 2; ctx.strokeRect(px + 3, py + 3, CELL - 6, CELL - 6); ctx.fillStyle = "#3A3366"; ctx.fillRect(px + 8, py + 8, 8, 8); }
+    else if (typeof c === "number") drawWall(x, y, c);
+    else if (c === "~") {
+      ctx.fillStyle = "#2F7BFF"; ctx.beginPath(); ctx.ellipse(px + CELL / 2, py + CELL / 2, 21, 15, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#9CC3FF"; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(px + CELL / 2, py + CELL / 2, 9 + 4 * Math.sin(t * 3 + x), 6 + 3 * Math.sin(t * 3 + x), 0, 0, Math.PI * 2); ctx.stroke();
+    } else if (c === "D") {
+      ctx.fillStyle = "#FCE883"; rr(px + 8, py + 4, CELL - 16, CELL - 6, 8); ctx.fill(); ctx.strokeStyle = "#0D0B1A"; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = "#FF8243"; ctx.fillRect(px + 13, py + 10, CELL - 26, 14); ctx.fillStyle = "#0D0B1A"; ctx.beginPath(); ctx.arc(px + CELL - 16, py + 30, 3, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // the metal reacting in its puddle
+  if (BX.bomb) {
+    var b = BX.bomb, M = MET[b.m], bx = b.x * CELL + CELL / 2, by = b.y * CELL + CELL / 2, f = 1 - b.t / FUSE_SECS, wob = Math.sin(t * (10 + f * 30)) * (2 + f * 3);
+    for (var i = 0; i < 6; i++) { var a = t * 4 + i, rad = 10 + ((t * 30 + i * 7) % 14); ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.fillRect(bx + Math.cos(a) * rad, by + Math.sin(a) * rad * .6 - 4, 3, 3); }
+    if (b.m === "K") { ctx.fillStyle = "rgba(199,125,255," + (.4 + .4 * Math.sin(t * 20)) + ")"; ctx.beginPath(); ctx.moveTo(bx - 10, by - 4); ctx.quadraticCurveTo(bx, by - 30 - f * 10, bx + 10, by - 4); ctx.fill(); }
+    ctx.fillStyle = "#D7DEE6"; rr(bx - 12 + wob, by - 10, 24, 18, 6); ctx.fill(); ctx.strokeStyle = M.col; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = "#0D0B1A"; ctx.font = "800 12px 'Open Sans', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(b.m, bx + wob, by);
+    ctx.strokeStyle = M.col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(bx, by, 22, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - f)); ctx.stroke();
+  }
+  // blast
+  BX.blasts.forEach(function (bl) {
+    ctx.globalAlpha = 1 - bl.t / .45;
+    bl.cells.forEach(function (c) { ctx.fillStyle = bl.col; ctx.fillRect(c[0] * CELL + 4, c[1] * CELL + 4, CELL - 8, CELL - 8); ctx.fillStyle = "#fff"; ctx.fillRect(c[0] * CELL + 16, c[1] * CELL + 16, CELL - 32, CELL - 32); });
+    ctx.globalAlpha = 1;
+  });
+  // sparks
+  BX.sparks.forEach(function (s) {
+    var sx = s.x * CELL + CELL / 2, sy = s.y * CELL + CELL / 2, fl = Math.sin(t * 16) * 3;
+    ctx.fillStyle = "#FF4D5E"; ctx.beginPath(); ctx.moveTo(sx, sy - 18 - fl); ctx.lineTo(sx + 14, sy); ctx.lineTo(sx, sy + 16); ctx.lineTo(sx - 14, sy); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#FCE883"; ctx.beginPath(); ctx.moveTo(sx, sy - 9 - fl); ctx.lineTo(sx + 7, sy); ctx.lineTo(sx, sy + 8); ctx.lineTo(sx - 7, sy); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#0D0B1A"; ctx.fillRect(sx - 6, sy - 2, 4, 4); ctx.fillRect(sx + 2, sy - 2, 4, 4);
+  });
+  // hero
+  var blink = BX.inv > 0 && Math.floor(BX.inv * 8) % 2 === 0;
+  if (!blink) {
+    var hs = SP.hero, hh = 48, hw = hh * hs.w / hs.h, hx = BX.dx * CELL + CELL / 2, hy = BX.dy * CELL + CELL - 1;
+    ctx.save(); ctx.imageSmoothingEnabled = !hs.pixel; ctx.translate(hx, hy); if (BX.face < 0) ctx.scale(-1, 1);
+    ctx.drawImage(hs.el, -hw / 2, -hh, hw, hh); ctx.restore();
+  }
+  BX.parts.forEach(function (p) { ctx.globalAlpha = 1 - p.t / .7; ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 5, 5); }); ctx.globalAlpha = 1;
+  if (BX.run && BX.ready > 0) {
+    ctx.fillStyle = "rgba(13,11,26,.55)"; ctx.fillRect(0, H / 2 - 40, W, 80);
+    ctx.fillStyle = "#FCE883"; ctx.font = "20px 'Press Start 2P', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("READY?", W / 2, H / 2);
+  }
+}
+
+/* =================== BOSS FIGHT =================== */
+var B = null, raf = 0;
+function paintBossSprites() {
+  if (!$("b-hero")) return;
+  $("b-hero").innerHTML = domArt("hero"); $("b-hero").classList.toggle("pic", SP.hero.ok);
+  $("b-mon").innerHTML = domArt(STG.key); $("b-mon").classList.toggle("pic", SP[STG.key].ok);
+  $("b-bolt").innerHTML = pixelSVG(BOLT_MAP, BOLT_PAL);
+}
+var hurtTimers = {};
+function showHurt(id, key, base) {
+  var img = $(id).querySelector("img"); if (!img || !SP[key].ok) return;
+  clearTimeout(hurtTimers[id]); img.src = IMG[key];
+  hurtTimers[id] = setTimeout(function () { var i = $(id).querySelector("img"); if (i) i.src = IMG[base]; }, HURT_MS);
+}
+function startBoss() {
+  stopLoop(); MODE = null; G.attempt++;
+  var powers = ownedPowers().filter(function (p) { return p.id !== STG.power.id; });
+  B = { hp: HITS_TO_WIN[G.lv], maxhp: HITS_TO_WIN[G.lv], hearts: HEARTS, max: HEARTS, n: 0, correct: 0, phase2: false, combo: 0, bestCombo: 0, bag: [], last: null,
+    powers: powers.map(function (p) { return { p: p, used: false }; }), fizz: false, shield: false, used: [] };
+  show("scr-boss");
+  $("b-name").textContent = STG.boss; $("b-charge-lbl").textContent = STG.boss.split(" ").pop() + " IS CHARGING";
+  $("b-hero").className = "sprite hero-sp"; $("b-mon").className = "sprite mon-sp";
+  clearTimeout(hurtTimers["b-hero"]); clearTimeout(hurtTimers["b-mon"]); paintBossSprites();
+  paintBossHud(); nextQ();
+}
+function paintBossHud(breakIdx) {
+  $("b-hearts").innerHTML = heartsHTML(B.hearts, B.max, breakIdx);
+  var p = Math.max(0, B.hp) / B.maxhp * 100;
+  $("b-left").textContent = "· " + Math.max(0, B.hp) + (B.hp === 1 ? " HIT" : " HITS") + " LEFT";
+  $("b-hp").style.width = p + "%"; $("b-hp").className = p <= 30 ? "low" : "";
+}
+function paintPowers() {
+  var el = $("b-powers"); el.hidden = !B.powers.length;
+  el.innerHTML = B.powers.map(function (x, i) { return '<button type="button" class="pw' + ((x.p.id === "fizz" && B.fizz) || (x.p.id === "shield" && B.shield) ? " on" : "") + '" data-i="' + i + '" title="' + esc(x.p.desc) + '"' + (x.used || B.locked ? " disabled" : "") + ">" + esc(x.p.name) + "</button>"; }).join("");
+}
+$("b-powers").addEventListener("click", function (e) {
+  var b = e.target.closest(".pw"); if (!b || b.disabled || B.locked) return;
+  var x = B.powers[+b.dataset.i]; x.used = true; B.used.push(x.p.name); Sound.orb();
+  if (x.p.id === "scan") {
+    var btns = $("b-opts").querySelectorAll(".qopt"), wrong = [];
+    B.q.opts.forEach(function (o, j) { if (!o.ok && !btns[j].disabled) wrong.push(j); });
+    var j = pick(wrong); btns[j].disabled = true; btns[j].classList.add("gone");
+  } else if (x.p.id === "fizz") B.fizz = true;
+  else if (x.p.id === "shield") B.shield = true;
+  else if (x.p.id === "swap") { stopBossTimer(); B.n--; nextQ(); return; }
+  paintPowers();
+});
+function drawQ() {
+  var pool = BOSS_POOL[STG.id][G.lv];
+  if (!B.bag.length) B.bag = shuffle(pool.map(function (x, i) { return i; }));
+  var k = B.bag.shift(); if (k === B.last && B.bag.length) { B.bag.push(k); k = B.bag.shift(); }
+  B.last = k; var e = pool[k]; return typeof e === "function" ? e() : e;
+}
+function nextQ() {
+  if (B.hp <= 0 || B.hearts <= 0) return bossEnd();
+  $("b-fb").hidden = true; $("b-bolt").classList.remove("fly");
+  var raw = drawQ();
+  var opts = shuffle(raw.opts.map(function (o) { return { t: o[0], ok: o[1] === true, err: o[1] === true ? null : o[1] }; }));
+  var right = opts.filter(function (o) { return o.ok; })[0].t;
+  B.q = { type: raw.type, text: raw.q, eq: raw.eq || "", opts: opts, why: raw.why, right: right };
+  B.n++;
+  $("b-qtype").textContent = (B.phase2 ? "PHASE 2 · " : "") + "ATTACK " + B.n + " · " + TYPES[raw.type].toUpperCase();
+  $("b-qeq").hidden = !B.q.eq; $("b-qeq").innerHTML = B.q.eq;
+  $("b-qtext").innerHTML = esc(B.q.text);
+  $("b-opts").innerHTML = opts.map(function (o, i) { return '<button type="button" class="qopt" data-i="' + i + '"><span class="k">' + "ABCD"[i] + '</span><span class="tx">' + esc(o.t) + "</span></button>"; }).join("");
+  B.t0q = performance.now(); B.secs = BOSS_SECS; B.locked = false;
+  paintPowers(); tick();
+}
+function tick() {
+  var el = (performance.now() - B.t0q) / 1000, left = Math.max(0, B.secs - el);
+  $("b-cbar").style.width = Math.min(100, el / B.secs * 100) + "%";
+  $("b-secs").textContent = Math.ceil(left);
+  $("b-charge").classList.toggle("warn", left <= 8);
+  if (left <= 0) { answer(-1); return; }
+  raf = requestAnimationFrame(tick);
+}
+function stopBossTimer() { cancelAnimationFrame(raf); }
+$("b-opts").addEventListener("click", function (e) { var b = e.target.closest(".qopt"); if (b && !b.disabled && !B.locked) answer(+b.dataset.i); });
+function bossKey(e) {
+  if (!B || B.locked) return;
+  var n = { 1: 0, 2: 1, 3: 2, 4: 3, a: 0, b: 1, c: 2, d: 3, A: 0, B: 1, C: 2, D: 3 }[e.key];
+  if (n != null) { var bt = $("b-opts").querySelectorAll(".qopt")[n]; if (bt && !bt.disabled) { e.preventDefault(); answer(n); } }
+}
+function floatText(txt, onBoss, hurt) {
+  var s = document.createElement("span"); s.className = "dmg" + (hurt ? " hurt" : ""); s.textContent = txt;
+  s.style[onBoss ? "right" : "left"] = onBoss ? "12%" : "8%"; s.style.top = "30%";
+  $("b-stage").appendChild(s); setTimeout(function () { s.remove(); }, 1100);
+}
+function retrigger(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+function answer(i) {
+  B.locked = true; stopBossTimer(); paintPowers();
+  var q = B.q, el = (performance.now() - B.t0q) / 1000, o = i >= 0 ? q.opts[i] : null, ok = !!(o && o.ok);
+  var btns = $("b-opts").querySelectorAll(".qopt");
+  q.opts.forEach(function (op, j) { btns[j].disabled = true; if (op.ok) btns[j].classList.add("right"); });
+  if (o && !ok) btns[i].classList.add("wrong");
+  var err = ok ? null : (o ? o.err : "timeout"), msg, short = STG.boss.split(" ").pop();
+  if (ok) {
+    B.correct++; B.combo++; B.bestCombo = Math.max(B.bestCombo, B.combo);
+    var crit = el <= CRIT_SECS, dmg = B.fizz ? 2 : 1; B.fizz = false;
+    B.hp = Math.max(0, B.hp - dmg);
+    G.points += (crit ? 150 : 100) * dmg + Math.round(Math.max(0, B.secs - el)) * 2;
+    retrigger($("b-hero"), "atk"); retrigger($("b-bolt"), "fly");
+    setTimeout(function () { showHurt("b-mon", STG.key + "Hurt", STG.key); retrigger($("b-mon"), "hit"); floatText(dmg > 1 ? "FIZZ BLAST!" : crit ? "CRITICAL!" : "HIT!", true); Sound.hit(); paintBossHud(); }, 380);
+    msg = '<span class="ans">' + (dmg > 1 ? "Double hit with Fizz Blast!" : crit ? "Critical hit! Speed bonus." : "Direct hit!") + "</span> " + (B.hp > 0 ? B.hp + " more to go." : "") + '<br><span class="work">' + esc(q.why) + "</span>";
+  } else {
+    B.combo = 0;
+    var blocked = B.shield; B.shield = false;
+    if (!blocked) B.hearts--;
+    retrigger($("b-mon"), "atk");
+    setTimeout(function () {
+      if (blocked) { floatText("BLOCKED!", false); Sound.orb(); return; }
+      showHurt("b-hero", "heroHurt", "hero"); retrigger($("b-hero"), "hit"); retrigger($("b-flash"), "on"); floatText("-1 ♥", false, true); Sound.hurt(); paintBossHud(B.hearts);
+    }, 300);
+    msg = (blocked ? "<b>Inert Shield blocked the damage!</b> " : "") + (err === "timeout" ? esc(short) + " struck first. You ran out of time." : "<b>" + esc(ERR[err].label) + ".</b> " + esc(ERR[err].tip)) +
+      '<br><span class="ans">Answer: ' + esc(q.right) + '</span><br><span class="work">' + esc(q.why) + "</span>";
+  }
+  logAnswer("boss", q.type, ok, err, q.text, o ? o.t : "(no answer)", q.right);
+  if (!B.phase2 && B.hp > 0 && B.hp <= B.maxhp / 2) {
+    B.phase2 = true;
+    setTimeout(function () { var p = document.createElement("div"); p.className = "phase"; p.textContent = short + " IS FURIOUS!"; $("b-stage").appendChild(p); setTimeout(function () { p.remove(); }, 2200); }, 700);
+  }
+  var over = B.hp <= 0 || B.hearts <= 0;
+  $("b-fb").hidden = false; $("b-fb").className = "qfb" + (ok ? "" : " no");
+  $("b-fb-msg").innerHTML = msg;
+  $("b-next").textContent = over ? (B.hp <= 0 ? "FINISH HIM ▶" : "CONTINUE ▶") : "NEXT ATTACK ▶";
+  setTimeout(function () { $("b-next").focus({ preventScroll: true }); if (window.matchMedia("(max-width: 759px)").matches) $("b-fb").scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 200);
+}
+$("b-next").addEventListener("click", function () { if (B.hp <= 0 || B.hearts <= 0) bossEnd(); else nextQ(); });
+function bossEnd() {
+  stopBossTimer(); Music.fadeOut();
+  var win = B.hp <= 0; B.win = win;
+  var firstClear = win && progress().cleared.indexOf(STG.id) < 0;
+  if (win) { $("b-mon").classList.add("dead"); saveCleared(STG.id); } else $("b-hero").classList.add("dead");
+  finish(true);
+  setTimeout(function () {
+    show("scr-bend"); Music.stop();
+    $("scr-bend").className = "bend" + (win ? "" : " lose");
+    $("be-title").textContent = win ? "VICTORY!" : "KNOCKED OUT!";
+    $("be-sprite").innerHTML = domArt(win ? "hero" : "heroHurt");
+    $("be-sprite").className = "sprite" + (win || SP.heroHurt.ok ? "" : " down");
+    $("be-msg").textContent = win ? STG.boss + " is defeated! " + B.correct + " hits in " + B.n + " attacks." :
+      STG.boss + " knocked you out. You landed " + B.correct + " of " + B.maxhp + " hits. Try again: you start straight at the boss.";
+    $("be-pow").hidden = !win;
+    $("be-pow").innerHTML = win ? (firstClear ? "POWER STOLEN: " : "POWER: ") + esc(STG.power.name) + "<br>" + esc(STG.power.desc) + " in the other boss fights." : "";
+    $("be-retry").hidden = win;
+    if (win) { Sound.win(); Confetti.go(); } else Sound.lose();
+  }, win ? 700 : 500);
+}
+$("be-go").addEventListener("click", function () { Confetti.stop(); finish(false, true); });
+$("be-retry").addEventListener("click", function () { startBoss(); });
+
+/* =================== RESULTS =================== */
+function finish(silent, showIt) {
+  var secs = (Date.now() - G.t0) / 1000, S2 = { secs: secs };
+  var log = G.log.filter(function (x) { return x.phase !== "boss" || x.attempt === G.attempt; }); // stage + this boss attempt
+  S2.correct = log.filter(function (x) { return x.ok; }).length; S2.total = log.length;
+  S2.pct = S2.total ? Math.round(S2.correct / S2.total * 100) : 0;
+  var byType = {}; Object.keys(TYPES).forEach(function (k) { byType[k] = [0, 0]; });
+  log.forEach(function (x) { byType[x.type][1]++; if (x.ok) byType[x.type][0]++; });
+  var errs = {}; log.forEach(function (x) { if (!x.ok) errs[x.err] = (errs[x.err] || 0) + 1; });
+  var errKeys = Object.keys(errs).sort(function (a, b) { return errs[b] - errs[a]; });
+  var wrongTypes = Object.keys(byType).filter(function (k) { return byType[k][1] > byType[k][0]; }).sort(function (a, b) { return (byType[b][1] - byType[b][0]) - (byType[a][1] - byType[a][0]); });
+  S2.byType = byType; S2.errs = errs; S2.errKeys = errKeys; S2.wrongTypes = wrongTypes; S2.log = log;
+  if (!silent || showIt) paintResults(S2);
+  if (silent) sendResults(S2);
+  return S2;
+}
+function phaseName(p) { return p === "boss" ? "Boss" : STG.game; }
+function paintResults(R) {
+  show("scr-result");
+  $("res-ring").style.setProperty("--p", R.pct); $("res-pct").textContent = R.pct + "%";
+  $("res-title").textContent = B && B.win ? "Stage " + STG.id + " cleared!" : STG.boss + " got away… for now";
+  $("res-sub").textContent = STG.game + ": " + G.s1.right + "/" + G.s1.total + " right. Boss: " + (B ? B.correct + " hits from " + B.n + " attacks" + (G.attempt > 1 ? " (attempt " + G.attempt + ")" : "") : "not reached") + ".";
+  $("res-correct").textContent = R.correct + "/" + R.total;
+  $("res-acc").textContent = R.pct + "%";
+  $("res-time").textContent = fmtTime(R.secs);
+  $("res-points").textContent = G.points;
+  $("res-bars").innerHTML = Object.keys(TYPES).filter(function (k) { return R.byType[k][1]; }).map(function (k) {
+    var b = R.byType[k], p = Math.round(b[0] / b[1] * 100);
+    return '<div class="bar-row"><span>' + esc(TYPES[k]) + '</span><div class="bar"><i class="' + (p < 60 ? "low" : "") + '" style="width:' + p + '%"></i></div><span class="n">' + b[0] + "/" + b[1] + "</span></div>";
+  }).join("");
+  $("res-weak").innerHTML = R.errKeys.length ? R.errKeys.slice(0, 3).map(function (k) { return "<li><b>" + esc(ERR[k].label) + " ×" + R.errs[k] + "</b><span>" + esc(ERR[k].tip) + "</span></li>"; }).join("") :
+    '<li class="good"><b>No mistakes!</b><span>Every answer was right first time.</span></li>';
+  var wrong = R.log.filter(function (x) { return !x.ok; });
+  $("res-review").innerHTML = wrong.length ? wrong.slice(0, 8).map(function (x) {
+    return '<li><span class="tag">' + phaseName(x.phase) + " · " + esc(TYPES[x.type]) + "</span><br>" + esc(x.text) + '<br><span class="you">You: ' + esc(x.picked) + '</span><br><span class="key">Answer: ' + esc(x.right) + "</span></li>";
+  }).join("") : "<li>Nothing to review. Every one was right.</li>";
+}
+function buildPayload(R) {
+  var lvName = G.lv === "hard" ? "Pure Chemistry" : "Combined Science";
+  var types = Object.keys(TYPES).filter(function (k) { return R.byType[k][1]; }).map(function (k) { return TYPES[k] + " " + R.byType[k][0] + "/" + R.byType[k][1]; }).join(", ");
+  var errs = R.errKeys.length ? R.errKeys.map(function (k) { return ERR[k].label + " x" + R.errs[k]; }).join("; ") : "none";
+  var most = R.wrongTypes.length ? R.wrongTypes.slice(0, 3).map(function (k) { return TYPES[k]; }).join(", ") : "none";
+  var res = B.win ? "cleared" : "not cleared";
+  var summary = "Stage " + STG.id + " " + STG.boss + " | Boss attempt " + G.attempt + " (" + res + ") | Level: " + lvName +
+    " | Accuracy: " + R.pct + "% | Wrong most: " + most +
+    " | " + STG.game + ": " + G.s1.right + "/" + G.s1.total + (STG.id === 2 ? ", perfect blasts " + G.s1.perfect + ", overkill " + G.s1.overkill + ", too weak " + G.s1.weak + ", hurt " + G.s1.hurt + ", room restarts " : ", self-bumps " + G.s1.bumps + ", round restarts ") + G.s1.restarts +
+    " | Boss: hits " + B.correct + "/" + B.n + " (needed " + B.maxhp + "), best combo " + B.bestCombo + (B.used.length ? ", powers used " + B.used.join(", ") : "") +
+    " | By topic: " + types + " | Errors: " + errs;
+  var wrong = R.log.filter(function (x) { return !x.ok; }).map(function (x) {
+    return "[" + phaseName(x.phase) + "] " + TYPES[x.type] + ": " + x.text + " → picked " + x.picked + " (" + (ERR[x.err] ? ERR[x.err].label : x.err) + "), answer " + x.right;
+  }).join(" | ");
+  return {
+    course: SHEET_TAB, chapter: "Periodic Panic · Stage " + STG.id + " " + STG.title + " · Boss attempt " + G.attempt + " (" + res + ") · " + lvName,
+    name: G.student.name, cls: G.student.cls, reg: G.student.reg,
+    score: R.correct, total: R.total, wrong: wrong || "None",
+    time: Math.round(R.secs), points: G.points, summary: summary
+  };
+}
+function post(payload) { return fetch(SUBMIT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) }); }
+function sendResults(R) {
+  var payload = G.payload = buildPayload(R), box = $("send"), msg = $("send-msg"), btn = $("btn-resend");
+  box.className = "send span"; btn.hidden = true;
+  if (!SUBMIT_URL || /nosend/.test(location.hash)) { msg.textContent = "Results not sent (no Google Sheet link set up)."; return; }
+  msg.textContent = "Sending your results to Ms Khoo…";
+  post(payload).then(function () { msg.textContent = "✓ Sent! Ms Khoo has your results."; })
+    .catch(function () { box.className = "send span err"; msg.textContent = "Couldn't send. Check your internet, then tap Try again."; btn.hidden = false; });
+}
+$("btn-resend").addEventListener("click", function () {
+  var box = $("send"); $("btn-resend").hidden = true; $("send-msg").textContent = "Sending…";
+  post(G.payload).then(function () { box.className = "send span"; $("send-msg").textContent = "✓ Sent! Ms Khoo has your results."; })
+    .catch(function () { $("send-msg").textContent = "Still couldn't send. Try again when you're online."; $("btn-resend").hidden = false; });
+});
+$("btn-again").addEventListener("click", function () { Confetti.stop(); startStage(STG.id); });
+$("btn-home").addEventListener("click", function () { Confetti.stop(); showSelect(); });
+
+/* =================== CONFETTI =================== */
+var Confetti = {
+  c: $("confetti"), p: [], on: false,
+  go: function () {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var c = this.c, w = c.width = innerWidth, h = c.height = innerHeight, cols = ["#FF8243", "#FFC0CB", "#FCE883", "#069494", "#1F2A2E"];
+    c.hidden = false; this.on = true; this.p = [];
+    for (var i = 0; i < 110; i++) this.p.push({ x: Math.random() * w, y: -Math.random() * h, s: 6 + Math.random() * 8, v: 2 + Math.random() * 3, a: Math.random() * 6, col: cols[i % cols.length] });
+    var self = this, cx = c.getContext("2d"), t0 = performance.now();
+    (function frame(t) {
+      if (!self.on) return;
+      cx.clearRect(0, 0, w, h);
+      self.p.forEach(function (p) { p.y += p.v; p.a += .1; cx.fillStyle = p.col; cx.fillRect(p.x + Math.sin(p.a) * 6, p.y, p.s, p.s * .6); });
+      if (t - t0 < 4000) requestAnimationFrame(frame); else self.stop();
+    })(t0);
+  },
+  stop: function () { this.on = false; this.c.hidden = true; }
+};
+
+if (/debug/.test(location.hash)) window.__PP = { G: G, S: function () { return S; }, B: function () { return B; }, EL: EL, BQ1: BQ1, placeQs: placeQs, pickPrompts: pickPrompts, startBoss: startBoss, startStage: startStage, eat: eat, BX: function () { return BX; }, dropMetal: dropMetal, tryMove: tryMove, seqPrompts: seqPrompts, BQ2: BQ2, steer: steer, buildPayload: buildPayload, finish: finish };
+
+})();
+</script>
+</body>
+</html>
