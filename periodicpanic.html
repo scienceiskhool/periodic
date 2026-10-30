@@ -439,6 +439,8 @@ canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-
 .cover .cfb b { color: var(--neon-green); } .cover .cfb.no b { color: var(--neon-red); }
 .cover .walls { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .cover .walls span { border: 2px solid; border-radius: 6px; padding: 4px 8px; font-weight: 800; font-size: .8rem; }
+.pw-chip .pw-desc { font-family: var(--font); font-size: .72rem; font-weight: 700; color: #F2C6D8; }
+.sel-note b { color: var(--neon-yellow); }
 </style>
 </head>
 <body>
@@ -517,7 +519,7 @@ canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-
       <div><p class="sel-title">STAGE SELECT</p><p class="sel-who" id="sel-who"></p><div class="sel-powers" id="sel-powers"></div></div>
     </div>
     <div class="sel-grid" id="sel-grid"></div>
-    <p class="sel-note">Beat a boss to steal its power. Use stolen powers in the other boss fights.</p>
+    <p class="sel-note" id="sel-note">Beat a boss to steal its power. Each power can be used once in every other boss fight.</p>
     <div class="sel-actions"><button class="pbtn ghost" type="button" id="sel-back">◀ CHANGE NAME / COURSE</button></div>
   </section>
 
@@ -573,7 +575,8 @@ canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-
     <span class="start-blink">PRESS BUTTON TO CONTINUE</span>
     <div class="bend-btns">
       <button class="pbtn" type="button" id="be-retry" hidden>TRY AGAIN ↻</button>
-      <button class="pbtn" type="button" id="be-go">SEE RESULTS ▶</button>
+      <button class="pbtn" type="button" id="be-go">STAGE SELECT ▶</button>
+      <button class="pbtn ghost" type="button" id="be-res">SEE MY RESULTS</button>
     </div>
   </section>
 
@@ -1074,7 +1077,7 @@ $("btn-go").addEventListener("click", function () {
   var s = readStudent(); if (!s) return;
   Sound.tone(1, "sine", .01, .0001);
   G.student = s;
-  if (location.hash === "#boss") { startStage(1, true); return; }
+  if (/#boss/.test(location.hash)) { startStage(1, true); return; }
   showSelect();
 });
 $("form-start").addEventListener("submit", function (e) { e.preventDefault(); });
@@ -1087,7 +1090,10 @@ function paintSelect() {
   var c = progress().cleared, pw = ownedPowers();
   $("sel-hero").innerHTML = domArt("hero");
   $("sel-who").textContent = G.student.name + " · " + G.student.cls + " · " + (G.lv === "hard" ? "Pure Chemistry" : "Combined Science");
-  $("sel-powers").innerHTML = pw.length ? pw.map(function (p) { return '<span class="pw-chip">' + esc(p.name) + "</span>"; }).join("") : '<span class="pw-chip none">NO POWERS YET</span>';
+  $("sel-powers").innerHTML = pw.length ? pw.map(function (p) { return '<span class="pw-chip" title="' + esc(p.desc) + '">' + esc(p.name) + '<span class="pw-desc"> · ' + esc(p.desc) + "</span></span>"; }).join("") : '<span class="pw-chip none">NO POWERS YET</span>';
+  var jw = G.justWon; G.justWon = null;
+  $("sel-note").innerHTML = jw ? "<b>Stage " + jw.id + " cleared!</b> You stole <b>" + esc(jw.power.name) + "</b>: " + esc(jw.power.desc).toLowerCase() + ". Use it once in each of the other boss fights. Pick your next stage!"
+    : "Beat a boss to steal its power. Each power can be used once in every other boss fight.";
   $("sel-grid").innerHTML = STAGES.map(function (s) {
     var done = c.indexOf(s.id) >= 0;
     return '<button type="button" class="scard' + (done ? " done" : "") + '" data-id="' + s.id + '"' + (s.ready ? "" : " disabled") + '><span class="num">' + s.id + '</span><span class="por">' + domArt(s.key) + '</span><span class="bn">' + esc(s.boss) + '</span><span class="tp">' + esc(s.title) + '</span><span class="gm">' + esc(s.game) + '</span><span class="stt">' + (!s.ready ? "COMING SOON" : done ? "CLEARED ✓" : "PLAY ▶") + "</span></button>";
@@ -1813,7 +1819,8 @@ function bossEnd() {
     if (win) { Sound.win(); Confetti.go(); } else Sound.lose();
   }, win ? 700 : 500);
 }
-$("be-go").addEventListener("click", function () { Confetti.stop(); finish(false, true); });
+$("be-go").addEventListener("click", function () { Confetti.stop(); G.justWon = B && B.win ? STG : null; showSelect(); });
+$("be-res").addEventListener("click", function () { Confetti.stop(); finish(false, true); });
 $("be-retry").addEventListener("click", function () { startBoss(); });
 
 /* =================== RESULTS =================== */
