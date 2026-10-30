@@ -876,7 +876,7 @@ var BOSS_POOL = {
 };
 
 /* =================== STAGE 2 CONTENT: ALKALI BLAST =================== */
-var FUSE_SECS = 1.8;                      // Alkali Blast: seconds between dropping a metal and the blast
+var FUSE_SECS = 2.2;                      // Alkali Blast: seconds between dropping a metal and the blast
 var MET = {
   Li: { p: 1, name: "lithium", col: "#2EF2E0", obs: "Lithium floats and fizzes steadily, moving about slowly." },
   Na: { p: 2, name: "sodium", col: "#FCE883", obs: "Sodium floats, melts into a silvery ball and darts about, fizzing rapidly." },
@@ -1466,7 +1466,7 @@ function startBomb() {
   COVER_ACT.b0 = function () { beginRoom(0); };
   cover('<div style="width:96px">' + domArt("alkali") + '</div><p class="lvname">STAGE 2 · GROUP 1: ALKALI METALS</p><h2>ALKALI BLAST</h2>' +
     '<p class="why">"' + esc(STG.taunt) + '"</p><p class="tagline">— ' + esc(STG.boss) + "</p>" +
-    "<ul><li>Break the walls to reach the door.</li><li>Stand on a puddle and drop a Group 1 metal into the water. Then run! The reaction blasts the squares next to the puddle.</li>" +
+    "<ul><li>Break the walls to reach the door.</li><li>Stand on a puddle and drop a Group 1 metal into the water. Then run! The more reactive the metal, the bigger the blast: Li reaches 1 square, Na 2 squares, K 3 squares in every direction.</li>" +
     "<li>Use the <b>least reactive</b> metal that will break the wall. Too weak and nothing breaks; too strong wastes points.</li><li>Answer the door questions to move to the next room.</li></ul>" +
     '<p><b>Phone/iPad:</b> arrows to move, Li / Na / K buttons to drop. <b>Laptop:</b> arrow keys to move; type Li, Na or K (or click the buttons) to drop.</p><div class="row"><button class="pbtn" type="button" data-go="b0">START ▶</button></div>');
 }
@@ -1496,7 +1496,7 @@ function makeRoom(ri) {
 function beginRoom(ri) {
   BX.ri = ri; BX.hearts = SNAKE_HEARTS; makeRoom(ri); paintBombHud();
   var intro = ri === 0
-    ? '<p class="why">Reactivity with water increases <b>down</b> Group 1:</p><div class="eg"><span>Li</span><span>&lt;</span><span>Na</span><span>&lt;</span><span>K</span></div><div class="walls"><span style="color:#E0A27A">CLAY ▮</span><span style="color:#FF8A7A">BRICK ▮▮</span><span style="color:#C9D2DE">STEEL ▮▮▮</span></div><p class="why">Weakest wall: least reactive metal. Strongest wall: most reactive metal.</p><p class="why">Laptop: type <b>Li</b>, <b>Na</b> or <b>K</b> (or click the buttons) to drop a metal.</p>'
+    ? '<p class="why">Reactivity with water increases <b>down</b> Group 1:</p><div class="eg"><span>Li</span><span>&lt;</span><span>Na</span><span>&lt;</span><span>K</span></div><div class="walls"><span style="color:#E0A27A">CLAY ▮</span><span style="color:#FF8A7A">BRICK ▮▮</span><span style="color:#C9D2DE">STEEL ▮▮▮</span></div><p class="why">Weakest wall: least reactive metal. Strongest wall: most reactive metal. More reactive metals blast further (Li 1, Na 2, K 3 squares), so run out of the shaded zone!</p><p class="why">Laptop: type <b>Li</b>, <b>Na</b> or <b>K</b> (or click the buttons) to drop a metal.</p>'
     : ri === 1 ? '<p class="why">The walls are in a new order, and a spark is on the loose. Touching it costs a ♥, but a blast destroys it.</p>'
     : '<p class="why">Last room! Two sparks. Beyond the door is the final question, then Blaze Alkali.</p>';
   cover('<p class="lvname">ROOM ' + (ri + 1) + ' OF 3</p><h2>' + ["THE CLAY LAB", "THE BRICK LAB", "THE STEEL LAB"][ri] + "</h2>" + intro + '<div class="row"><button class="pbtn" type="button" data-go="bgo">GO ▶</button></div>');
@@ -1538,9 +1538,21 @@ function dropMetal(m) {
   if (cellAt(BX.px, BX.py) !== "~") { toast("<b>No water here!</b> Group 1 metals react with water. Stand on a puddle first.", true, 2.5); Sound.bad(); return; }
   BX.bomb = { x: BX.px, y: BX.py, m: m, t: FUSE_SECS }; Sound.tone(500, "square", .08, .05, 0, 900);
 }
-function blastCells(x, y) { return [[x, y], [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].filter(function (c) { return c[0] >= 0 && c[0] < COLS && c[1] >= 0 && c[1] < ROWS; }); }
+// blast: Li reaches 1 square, Na 2, K 3 in each direction. It stops at solid blocks and at the first wall it hits.
+function blastCells(x, y, r) {
+  var out = [[x, y]];
+  [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+    for (var i = 1; i <= r; i++) {
+      var cx = x + d[0] * i, cy = y + d[1] * i, v = cellAt(cx, cy);
+      if (v === undefined || v === "#") break;
+      out.push([cx, cy]);
+      if (typeof v === "number") break;
+    }
+  });
+  return out;
+}
 function explode() {
-  var b = BX.bomb, M = MET[b.m], cells = blastCells(b.x, b.y), wall = null; BX.bomb = null;
+  var b = BX.bomb, M = MET[b.m], cells = blastCells(b.x, b.y, M.p), wall = null; BX.bomb = null;
   cells.forEach(function (c) { var v = cellAt(c[0], c[1]); if (typeof v === "number") wall = { x: c[0], y: c[1], s: v }; });
   BX.blasts.push({ cells: cells, t: 0, col: M.col });
   Sound.smash();
@@ -1555,7 +1567,7 @@ function explode() {
     else { G.s1.weak++; logAnswer("s1", "react", false, "weak", text, b.m, right); toast("<b>Not reactive enough!</b> " + M.obs + " The " + WALL_NAME[wall.s].toLowerCase() + " wall needs a more reactive metal. Li &lt; Na &lt; K.", true, 4.5); Sound.bad(); }
   } else toast(M.obs, false, 2.4);
   if (BX.inv <= 0 && cells.some(function (c) { return c[0] === BX.px && c[1] === BX.py; })) {
-    setTimeout(function () { toast("<b>Too close!</b> Step out of the blast before it goes off.", true, 2.6); }, 50);
+    setTimeout(function () { toast("<b>Too close!</b> Get out of the shaded zone before it goes off. Tip: step out of the puddle's row and column.", true, 3); }, 50);
     hurtPlayer();
   }
 }
@@ -1652,8 +1664,15 @@ function drawBomb() {
       ctx.fillStyle = "#FF8243"; ctx.fillRect(px + 13, py + 10, CELL - 26, 14); ctx.fillStyle = "#0D0B1A"; ctx.beginPath(); ctx.arc(px + CELL - 16, py + 30, 3, 0, Math.PI * 2); ctx.fill();
     }
   }
-  // the metal reacting in its puddle
+  // the metal reacting in its puddle, with its danger zone shaded
   if (BX.bomb) {
+    var zb = BX.bomb, zcol = MET[zb.m].col;
+    var zc = blastCells(zb.x, zb.y, MET[zb.m].p);
+    ctx.globalAlpha = .34 + .16 * Math.sin(t * (8 + (1 - zb.t / FUSE_SECS) * 20));
+    zc.forEach(function (c) { ctx.fillStyle = zcol; ctx.fillRect(c[0] * CELL + 3, c[1] * CELL + 3, CELL - 6, CELL - 6); });
+    ctx.globalAlpha = 1; ctx.strokeStyle = zcol; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    zc.forEach(function (c) { ctx.strokeRect(c[0] * CELL + 4, c[1] * CELL + 4, CELL - 8, CELL - 8); });
+    ctx.setLineDash([]);
     var b = BX.bomb, M = MET[b.m], bx = b.x * CELL + CELL / 2, by = b.y * CELL + CELL / 2, f = 1 - b.t / FUSE_SECS, wob = Math.sin(t * (10 + f * 30)) * (2 + f * 3);
     for (var i = 0; i < 6; i++) { var a = t * 4 + i, rad = 10 + ((t * 30 + i * 7) % 14); ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.fillRect(bx + Math.cos(a) * rad, by + Math.sin(a) * rad * .6 - 4, 3, 3); }
     if (b.m === "K") { ctx.fillStyle = "rgba(199,125,255," + (.4 + .4 * Math.sin(t * 20)) + ")"; ctx.beginPath(); ctx.moveTo(bx - 10, by - 4); ctx.quadraticCurveTo(bx, by - 30 - f * 10, bx + 10, by - 4); ctx.fill(); }
