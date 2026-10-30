@@ -441,6 +441,14 @@ canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-
 .cover .walls span { border: 2px solid; border-radius: 6px; padding: 4px 8px; font-weight: 800; font-size: .8rem; }
 .pw-chip .pw-desc { font-family: var(--font); font-size: .72rem; font-weight: 700; color: #F2C6D8; }
 .sel-note b { color: var(--neon-yellow); }
+/* laptops: show the Li / Na / K buttons (arrows stay on the keyboard) */
+@media (hover: hover) and (pointer: fine) {
+  body:not(.touch) .pad.bomb { display: grid; }
+  body:not(.touch) .pad.bomb button[data-k] { display: none; }
+  body:not(.touch) .pad.bomb button[data-m] { height: 64px; font-size: .85rem; cursor: pointer; }
+  body:not(.touch) .pad.bomb button[data-m] small { font-size: .5rem; margin-top: 4px; }
+}
+body:not(.touch) .pad.bomb + .keys { display: block; }
 </style>
 </head>
 <body>
@@ -1168,7 +1176,7 @@ document.addEventListener("keydown", function (e) {
   if (!$("scr-boss").hidden) return bossKey(e);
   if ($("scr-play").hidden || !$("c-cover").hidden) return;
   if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
-  if (MODE === "bomb") { var m = { 1: "Li", 2: "Na", 3: "K" }[e.key]; if (m) { e.preventDefault(); dropMetal(m); return; } }
+  if (MODE === "bomb" && /^[a-zA-Z]$/.test(e.key)) { e.preventDefault(); if (!e.repeat) typeMetal(e.key.toLowerCase()); return; }
   var k = KEYMAP[e.key]; if (!k) return;
   e.preventDefault(); if (e.repeat) return;
   if (MODE === "bomb") bombHold(k); else steer(k);
@@ -1180,7 +1188,7 @@ function setPad(kind) {
     $("pad").className = "pad bomb";
     $("pad").innerHTML = '<button type="button" data-k="l" aria-label="Left">◀</button><button type="button" data-k="u" aria-label="Up">▲</button><button type="button" data-k="d" aria-label="Down">▼</button><button type="button" data-k="r" aria-label="Right">▶</button>' +
       '<button type="button" data-m="Li">Li<small>LITHIUM</small></button><button type="button" data-m="Na">Na<small>SODIUM</small></button><button type="button" data-m="K">K<small>POTASSIUM</small></button>';
-    $("keys").innerHTML = "<kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> move · drop <kbd>1</kbd> Li <kbd>2</kbd> Na <kbd>3</kbd> K";
+    $("keys").innerHTML = "<kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> move · to drop a metal, type <kbd>Li</kbd> <kbd>Na</kbd> or <kbd>K</kbd>, or click a button";
     return;
   }
   $("pad").className = "pad four";
@@ -1460,7 +1468,7 @@ function startBomb() {
     '<p class="why">"' + esc(STG.taunt) + '"</p><p class="tagline">— ' + esc(STG.boss) + "</p>" +
     "<ul><li>Break the walls to reach the door.</li><li>Stand on a puddle and drop a Group 1 metal into the water. Then run! The reaction blasts the squares next to the puddle.</li>" +
     "<li>Use the <b>least reactive</b> metal that will break the wall. Too weak and nothing breaks; too strong wastes points.</li><li>Answer the door questions to move to the next room.</li></ul>" +
-    '<p><b>Phone/iPad:</b> arrows to move, Li / Na / K buttons to drop. <b>Laptop:</b> arrow keys, then 1, 2 or 3.</p><div class="row"><button class="pbtn" type="button" data-go="b0">START ▶</button></div>');
+    '<p><b>Phone/iPad:</b> arrows to move, Li / Na / K buttons to drop. <b>Laptop:</b> arrow keys to move; type Li, Na or K (or click the buttons) to drop.</p><div class="row"><button class="pbtn" type="button" data-go="b0">START ▶</button></div>');
 }
 function paintBombHud(breakIdx) {
   $("c-lv").innerHTML = "STAGE 2 · ALKALI BLAST<span>ROOM " + (BX.ri + 1) + "/3</span>";
@@ -1488,7 +1496,7 @@ function makeRoom(ri) {
 function beginRoom(ri) {
   BX.ri = ri; BX.hearts = SNAKE_HEARTS; makeRoom(ri); paintBombHud();
   var intro = ri === 0
-    ? '<p class="why">Reactivity with water increases <b>down</b> Group 1:</p><div class="eg"><span>Li</span><span>&lt;</span><span>Na</span><span>&lt;</span><span>K</span></div><div class="walls"><span style="color:#E0A27A">CLAY ▮</span><span style="color:#FF8A7A">BRICK ▮▮</span><span style="color:#C9D2DE">STEEL ▮▮▮</span></div><p class="why">Weakest wall: least reactive metal. Strongest wall: most reactive metal.</p>'
+    ? '<p class="why">Reactivity with water increases <b>down</b> Group 1:</p><div class="eg"><span>Li</span><span>&lt;</span><span>Na</span><span>&lt;</span><span>K</span></div><div class="walls"><span style="color:#E0A27A">CLAY ▮</span><span style="color:#FF8A7A">BRICK ▮▮</span><span style="color:#C9D2DE">STEEL ▮▮▮</span></div><p class="why">Weakest wall: least reactive metal. Strongest wall: most reactive metal.</p><p class="why">Laptop: type <b>Li</b>, <b>Na</b> or <b>K</b> (or click the buttons) to drop a metal.</p>'
     : ri === 1 ? '<p class="why">The walls are in a new order, and a spark is on the loose. Touching it costs a ♥, but a blast destroys it.</p>'
     : '<p class="why">Last room! Two sparks. Beyond the door is the final question, then Blaze Alkali.</p>';
   cover('<p class="lvname">ROOM ' + (ri + 1) + ' OF 3</p><h2>' + ["THE CLAY LAB", "THE BRICK LAB", "THE STEEL LAB"][ri] + "</h2>" + intro + '<div class="row"><button class="pbtn" type="button" data-go="bgo">GO ▶</button></div>');
@@ -1514,6 +1522,16 @@ function tryMove(d) {
   checkSparkHit();
   if (cellAt(nx, ny) === "D") roomDone();
 }
+// typing a symbol: "li", "na" or "k" (other letters reset the buffer)
+var typed = "", typedT = 0;
+function typeMetal(ch) {
+  if (performance.now() - typedT > 1500) typed = "";
+  typedT = performance.now(); typed = (typed + ch).slice(-2);
+  var m = /li$/.test(typed) ? "Li" : /na$/.test(typed) ? "Na" : /k$/.test(typed) ? "K" : null;
+  if (m) { typed = ""; dropMetal(m); flashMetalBtn(m); }
+  else if (!/^[ln]$/.test(typed.slice(-1))) toast("Type <b>Li</b>, <b>Na</b> or <b>K</b> to drop a metal.", true, 1.8);
+}
+function flashMetalBtn(m) { var b = $("pad").querySelector('[data-m="' + m + '"]'); if (b) { b.classList.add("on"); setTimeout(function () { b.classList.remove("on"); }, 150); } }
 function dropMetal(m) {
   if (!BX || MODE !== "bomb" || !BX.run || BX.ready > 0) return;
   if (BX.bomb) { toast("<b>Wait!</b> Let the reaction finish first.", true, 1.6); return; }
