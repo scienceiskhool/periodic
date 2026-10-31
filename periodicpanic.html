@@ -239,7 +239,7 @@ body.touch .pad { display: grid; } body.touch .keys { display: none; }
 .hero-sp.pic { width: 100px; height: 118px; }
 .mon-sp.pic { width: 150px; height: 150px; }
 .sprite.pic img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; image-rendering: auto; }
-.mon-sp img { transform: scaleX(-1); }
+.mon-sp.flip img { transform: scaleX(-1); }
 .hero-sp { width: 86px; animation: bob 1s steps(2) infinite; }
 .mon-sp { width: 140px; animation: bob 1.4s steps(2) infinite; }
 @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
@@ -652,6 +652,8 @@ var IMG = {                               // sprite files (same folder). Missing
   halo: "halo.png", haloHurt: "halo%20hurt.png",
   noble: "noble.png", nobleHurt: "noble%20hurt.png"
 };
+var HALOGEN_SHEET = "halogens.png";     // Halogen Fighter sprite sheet: 5 columns (F, Cl, Br, I, At) × 3 rows (idle, attack, hurt), cells 200 × 204 px
+var FLIP_BOSS = { trend: false, alkali: false, halo: false, noble: false }; // true = mirror that boss image in the boss fight (use if it faces right)
 var CLASSES = [];
 ["S1", "S2", "S3", "S4"].forEach(function (l) {
   ["Charity", "Courage", "Faith", "Hope", "Humility", "Integrity", "Love", "Respect", "Joy"].forEach(function (v) { CLASSES.push(l + " " + v); });
@@ -1953,9 +1955,31 @@ function nextStep() {
 }
 
 /* ---------- drawing ---------- */
+var HSHEET = { img: null, sil: null, cw: 200, ch: 204, order: ["F", "Cl", "Br", "I", "At"] };
+(function () {
+  var im = new Image();
+  im.onload = function () {
+    HSHEET.cw = im.width / 5; HSHEET.ch = im.height / 3; HSHEET.img = im;
+    var c = document.createElement("canvas"); c.width = im.width; c.height = im.height; var x = c.getContext("2d");
+    x.drawImage(im, 0, 0); x.globalCompositeOperation = "source-in"; x.fillStyle = "#3A3366"; x.fillRect(0, 0, c.width, c.height);
+    HSHEET.sil = c;
+  };
+  im.src = HALOGEN_SHEET;
+})();
 function circ(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); }
+function drawSheetFighter(k, x, y, s, o) {
+  var col = HSHEET.order.indexOf(k), row = o.punch ? 1 : o.hurt ? 2 : 0, t = FX.t;
+  var h = 140 * s, w = h * HSHEET.cw / HSHEET.ch;
+  var bob = HAL[k].state === "gas" && !o.sil ? Math.sin(t * 3 + x) * 4 : 0;
+  var dx = x - w / 2 + (o.lunge || 0) * s + (row === 1 ? w * .16 : 0) + (o.shake || o.hurt ? Math.sin(t * 70) * 3 : 0);
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(o.sil ? HSHEET.sil : HSHEET.img, col * HSHEET.cw, row * HSHEET.ch, HSHEET.cw, HSHEET.ch, dx, y - h + 12 * s + bob, w, h);
+  if (o.sil) { ctx.fillStyle = "#8C86A8"; ctx.font = "800 " + Math.round(34 * s) + "px 'Open Sans', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("?", x, y - h * .55); }
+  ctx.restore();
+}
 function drawFighter(k, x, y, s, o) {
-  o = o || {}; var h = HAL[k], sil = !!o.sil, col = sil ? "#3A3366" : h.col, t = FX.t, ink = "#0D0B1A";
+  o = o || {};
+  if (HSHEET.img) return drawSheetFighter(k, x, y, s, o); var h = HAL[k], sil = !!o.sil, col = sil ? "#3A3366" : h.col, t = FX.t, ink = "#0D0B1A";
   ctx.save();
   ctx.translate(x + (o.shake ? Math.sin(t * 70) * 4 : 0), y + (h.state === "gas" && !sil ? Math.sin(t * 3 + x) * 4 : 0) - (o.lunge || 0) * 0);
   ctx.scale(s, s); if (o.flip) ctx.scale(-1, 1);
@@ -2085,7 +2109,7 @@ var B = null, raf = 0;
 function paintBossSprites() {
   if (!$("b-hero")) return;
   $("b-hero").innerHTML = domArt("hero"); $("b-hero").classList.toggle("pic", SP.hero.ok);
-  $("b-mon").innerHTML = domArt(STG.key); $("b-mon").classList.toggle("pic", SP[STG.key].ok);
+  $("b-mon").innerHTML = domArt(STG.key); $("b-mon").classList.toggle("pic", SP[STG.key].ok); $("b-mon").classList.toggle("flip", !!FLIP_BOSS[STG.key]);
   $("b-bolt").innerHTML = pixelSVG(BOLT_MAP, BOLT_PAL);
 }
 var hurtTimers = {};
