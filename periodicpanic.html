@@ -458,6 +458,22 @@ body:not(.touch) .pad.bomb + .keys { display: block; }
 .qfbline b.ok { color: var(--neon-green); } .qfbline b.no { color: var(--neon-red); }
 @media (min-width: 820px) and (min-aspect-ratio: 1/1) { #c-choices { grid-area: pad; grid-template-columns: 1fr; } }
 @media (max-width: 819px), (max-aspect-ratio: 1/1) { .choices .qopt { font-size: .86rem; padding: 6px 8px; } .choices { gap: 6px; } .qfbline { font-size: .8rem; } }
+/* Balloon Float pad: ◀ FLAP ▶ */
+.pad.three { grid-template-columns: 1fr 1.4fr 1fr; }
+@media (min-width: 820px) and (min-aspect-ratio: 1/1) { #pad.three { grid-template-columns: 1fr 1.4fr 1fr; } #pad.three .jump { grid-column: auto; } }
+/* bigger, more intimidating bosses */
+.stage { height: 250px; }
+.mon-sp.pic { width: 220px; height: 220px; margin-right: -2%; }
+.mon-sp.pic img { filter: drop-shadow(0 0 14px rgba(255,127,176,.35)); }
+@media (min-width: 760px) {
+  .stage { height: 290px; }
+  .mon-sp.pic { width: 280px; height: 280px; }
+}
+@media (max-width: 420px) {
+  .stage { height: 220px; }
+  .mon-sp.pic { width: 190px; height: 190px; }
+  .hero-sp.pic { width: 84px; height: 100px; }
+}
 </style>
 </head>
 <body>
@@ -501,7 +517,7 @@ body:not(.touch) .pad.bomb + .keys { display: block; }
         <div class="mode-card"><b>1 · Professor Trend</b><span>Trend Snake: periodic trends</span><small>Everyone</small></div>
         <div class="mode-card"><b>2 · Blaze Alkali</b><span>Alkali Blast: Group 1</span><small>Everyone</small></div>
         <div class="mode-card"><b>3 · Halo Queen</b><span>Halogen Fighter: Group 17</span><small>Everyone</small></div>
-        <div class="mode-card"><b>4 · Sir Noble</b><span>Balloon Fight: Group 18</span><small>Coming soon</small></div>
+        <div class="mode-card"><b>4 · Sir Noble</b><span>Balloon Float: Group 18</span><small>Everyone</small></div>
       </div>
     </div>
 
@@ -671,8 +687,9 @@ var STAGES = [
   { id: 3, key: "halo", boss: "HALO QUEEN", title: "Group 17: halogens", game: "Halogen Fighter", ready: true,
     power: { id: "swap", name: "DISPLACER", desc: "Swaps this question for a new one" },
     taunt: "Bow before the Halo Queen! My halogens rule the ring. Only a MORE reactive fighter can knock out my champions!" },
-  { id: 4, key: "noble", boss: "SIR NOBLE", title: "Group 18: noble gases", game: "Balloon Fight", ready: false,
-    power: { id: "shield", name: "INERT SHIELD", desc: "Blocks the damage from one wrong answer" } }
+  { id: 4, key: "noble", boss: "SIR NOBLE", title: "Group 18: noble gases", game: "Balloon Float", ready: true,
+    power: { id: "shield", name: "INERT SHIELD", desc: "Blocks the damage from one wrong answer" },
+    taunt: "I am perfectly stable and need NOTHING from anyone. Prove you understand why, peasant, or float forever!" }
 ];
 
 /* =================== HELPERS =================== */
@@ -710,6 +727,7 @@ var TYPES = {
   metal: "Metal or non-metal", predict: "Predicting properties", charge: "Ion charges",
   sequence: "Down a group / across a period", amph: "Amphoteric oxides",
   react: "Reactivity with water", observe: "Observations with water", props: "Physical properties", products: "Products with water",
+  fullshell: "Full outer shells", monatomic: "Monatomic gases", unreactive: "Why noble gases are unreactive", uses: "Uses of noble gases",
   halprops: "Halogen colour & state", trend17: "Group 17 trends", halreact: "Halogen reactivity", disp: "Displacement reactions", solcol: "Colour changes"
 };
 var ERR = {
@@ -727,6 +745,10 @@ var ERR = {
   observe: { label: "Observation mix-up", tip: "All three float and fizz (hydrogen). Lithium fizzes steadily; sodium melts into a silvery ball and darts about; potassium also bursts into a lilac flame." },
   props: { label: "Physical property mix-up", tip: "Group 1 metals are soft (cut with a knife) and have low densities (they float on water). Melting point decreases down the group." },
   products: { label: "Products mix-up", tip: "Group 1 metal + water → metal hydroxide + hydrogen. The hydroxide makes the solution alkaline." },
+  fullshell: { label: "Full outer shell mix-up", tip: "Noble gases have a full outer shell: He 2, Ne 2,8, Ar 2,8,8. Other configurations (e.g. 2,8,1 or 2,7) are not full." },
+  monatomic: { label: "Monatomic mix-up", tip: "Noble gases exist as single atoms (He, Ne, Ar), not as molecules like Cl₂ or O₂." },
+  unreactive: { label: "Why unreactive? mix-up", tip: "Noble gas atoms have a full outer shell, a stable electronic configuration, so they do not need to gain, lose or share electrons." },
+  uses: { label: "Noble gas uses mix-up", tip: "Unreactive noble gases give an inert environment: argon and neon in light bulbs, helium in balloons, argon in steel-making." },
   halprops: { label: "Halogen colour/state mix-up", tip: "At room temperature: chlorine is a pale yellow-green gas, bromine a reddish-brown liquid, iodine a black solid (purple vapour when warmed)." },
   diatomic: { label: "Forgot halogens are diatomic", tip: "Halogens exist as diatomic molecules: Cl₂, Br₂, I₂. Always write them with a 2." },
   trend17: { label: "Group 17 trend mix-up", tip: "Down Group 17: the colour gets darker and melting/boiling points increase (gas → liquid → solid)." },
@@ -1069,6 +1091,49 @@ var BQ3 = [
 ];
 BOSS_POOL[3] = { easy: BQ3.filter(function (q) { return !q.pure; }), hard: BQ3 };
 
+/* =================== STAGE 4 CONTENT: BALLOON FLOAT =================== */
+// each wave: pop the balloons whose labels fit the rule. good/bad: [label, explanation]
+var WAVES4 = [
+  { name: "FULL SHELLS", type: "fullshell", err: "fullshell", need: 4,
+    text: "Pop the balloons showing the electronic configuration of a <b>noble gas</b> (a full outer shell).",
+    good: [["2", "Helium (2): its only shell is full."], ["2,8", "Neon (2,8): full outer shell."], ["2,8,8", "Argon (2,8,8): stable full outer shell of 8."]],
+    bad: [["2,8,1", "2,8,1 is sodium: 1 outer electron, not full."], ["2,7", "2,7 is fluorine: 7 outer electrons, one short of full."], ["2,8,7", "2,8,7 is chlorine: one short of a full shell."], ["2,8,2", "2,8,2 is magnesium: 2 outer electrons in its third shell."], ["2,6", "2,6 is oxygen: 6 outer electrons, not full."], ["2,8,8,1", "2,8,8,1 is potassium: 1 outer electron."]] },
+  { name: "SINGLE ATOMS", type: "monatomic", err: "monatomic", need: 4,
+    text: "Pop the balloons showing how noble gases <b>really exist</b>: as single atoms (monatomic).",
+    good: [["He", "Helium exists as single He atoms."], ["Ne", "Neon exists as single Ne atoms."], ["Ar", "Argon exists as single Ar atoms."]],
+    bad: [["He₂", "Noble gases don't bond, even to themselves: helium is He, not He₂."], ["Ne₂", "Neon is monatomic: Ne, not Ne₂."], ["Ar₂", "Argon is monatomic: Ar, not Ar₂."], ["Cl₂", "Cl₂ is chlorine, a diatomic halogen, not a noble gas."], ["O₂", "O₂ is oxygen, a diatomic gas, not a noble gas."], ["N₂", "N₂ is nitrogen, not a noble gas."]] },
+  { name: "WHY SO UNREACTIVE?", type: "unreactive", err: "unreactive", need: 4,
+    text: "Pop the balloons that explain <b>why noble gases are unreactive</b>.",
+    good: [["Full outer shell", "A full outer shell is a stable electronic configuration."], ["Stable electron arrangement", "Their electronic configuration is already stable."], ["No need to gain, lose or share e⁻", "With a full outer shell, they don't need to gain, lose or share electrons."]],
+    bad: [["They have no electrons", "Noble gas atoms do have electrons, e.g. argon is 2,8,8."], ["1 outer electron", "That describes Group 1 metals, which are very reactive."], ["Their atoms are too heavy", "Mass has nothing to do with it. Helium is very light and still unreactive."], ["They are metals", "Noble gases are non-metals."], ["7 outer electrons", "That describes the halogens, which are reactive."]] },
+  { name: "INERT AT WORK", type: "uses", err: "uses", need: 4, pure: true,
+    text: "Noble gases give an <b>inert (unreactive) environment</b>. Pop the balloons showing <b>real uses</b>.",
+    good: [["He · weather balloons", "Helium fills balloons: it is very light and unreactive, so it won't burn."], ["Ar · light bulbs", "Argon fills light bulbs so the hot filament doesn't react."], ["Ne · light bulbs", "Neon is used in light bulbs and lamps because it is unreactive."], ["Ar · steel-making", "Argon gives an inert atmosphere in steel-making, so the hot metal doesn't react with oxygen."]],
+    bad: [["He · rocket fuel", "Helium can't be a fuel: it doesn't burn (it is unreactive)."], ["Ne · fertiliser", "Neon is unreactive, so it can't supply nutrients to plants."], ["Ar · killing germs", "Killing germs needs a reactive substance like chlorine, not argon."], ["He · fizzy drinks", "Fizzy drinks use carbon dioxide, not helium."], ["Ar · making plastics", "Argon doesn't react, so it can't be a raw material for plastics."]] }
+];
+var BANDITS = [
+  { s: "Na", col: "#FF8243", say: "Sodium wants to GIVE you its outer electron, but your outer shell is full. No deal!" },
+  { s: "Cl", col: "#C9E86A", say: "Chlorine wants to TAKE an electron, but your full shell is stable. No deal!" },
+  { s: "O", col: "#FF4D5E", say: "Oxygen wants to SHARE electrons, but a noble gas doesn't need to. No deal!" }
+];
+
+/* =================== BOSS QUESTIONS: SIR NOBLE =================== */
+var BQ4 = [
+  { type: "monatomic", q: "Noble gases exist as…", opts: [["single atoms (monatomic)", true], ["diatomic molecules", "monatomic"], ["giant molecules", "monatomic"], ["positive ions", "unreactive"]], why: "Noble gas atoms don't bond to each other, so they exist as single atoms: He, Ne, Ar." },
+  { type: "unreactive", q: "Why are the noble gases unreactive?", opts: [["Their atoms have a full outer shell of electrons", true], ["Their atoms have no electrons", "unreactive"], ["Their atoms have one outer electron", "fullshell"], ["They are gases at room temperature", "unreactive"]], why: "A full outer shell is a stable electronic configuration, so there is no need to gain, lose or share electrons." },
+  { type: "fullshell", q: "What is the electronic configuration of argon (proton number 18)?", opts: [["2,8,8", true], ["2,8,7", "fullshell"], ["2,8,8,1", "fullshell"], ["8,8,2", "fullshell"]], why: "18 electrons: 2,8,8. The outer shell has 8, so it is full." },
+  { type: "fullshell", q: "Which of these elements is unreactive?", opts: [["The element with configuration 2,8", true], ["The element with configuration 2,8,1", "fullshell"], ["The element with configuration 2,7", "fullshell"], ["The element with configuration 2,6", "fullshell"]], why: "2,8 is neon: a full outer shell, so it is unreactive." },
+  { type: "unreactive", q: "Helium has only 2 electrons, yet it is unreactive. Why?", opts: [["Its only shell can hold just 2 electrons, so it is full", true], ["It needs 6 more electrons, but cannot get them", "fullshell"], ["Its electrons are all in the second shell", "fullshell"], ["It is too light to react", "unreactive"]], why: "The first shell holds a maximum of 2 electrons, so helium's outer shell is full." },
+  { type: "unreactive", q: "Which statement about the noble gases is correct?", opts: [["They do not need to gain, lose or share electrons", true], ["They easily lose electrons to form positive ions", "unreactive"], ["They gain electrons to form negative ions", "unreactive"], ["They share electrons to form diatomic molecules", "monatomic"]], why: "Their full outer shells are already stable." },
+  { type: "monatomic", q: "Which formula correctly represents neon gas?", opts: [["Ne", true], ["Ne₂", "monatomic"], ["Ne₈", "monatomic"], ["Ne²⁺", "unreactive"]], why: "Neon is monatomic: it exists as single Ne atoms." },
+  { type: "predict", q: "Radon is at the bottom of Group 18. Predict its properties.", opts: [["An unreactive, monatomic gas", true], ["A reactive, diatomic gas", "predict"], ["A soft, reactive metal", "metal"], ["A black solid that displaces iodine", "predict"]], why: "Like all noble gases, radon has a full outer shell, so it is unreactive and monatomic." },
+  { type: "uses", pure: true, q: "Argon is used to fill light bulbs because…", opts: [["it is unreactive, so the hot filament does not react with it", true], ["it reacts with the filament to make light", "uses"], ["it is a good conductor of electricity", "uses"], ["it burns with a bright flame", "uses"]], why: "Argon provides an inert environment, protecting the very hot filament." },
+  { type: "uses", pure: true, q: "Why is argon used in the manufacture of steel?", opts: [["It provides an inert atmosphere so the hot metal does not react with oxygen", true], ["It reacts with the iron to make it stronger", "uses"], ["It is a reducing agent", "uses"], ["It acts as a fuel to heat the furnace", "uses"]], why: "Argon is unreactive, so it keeps oxygen away from the hot metal." },
+  { type: "uses", pure: true, q: "Which noble gas is used to fill party and weather balloons?", opts: [["Helium", true], ["Argon", "uses"], ["Neon", "uses"], ["Radon", "uses"]], why: "Helium has a very low density and is unreactive, so it is safe to use in balloons." },
+  { type: "uses", pure: true, q: "Which pair shows a correct use of a noble gas?", opts: [["Neon: light bulbs and lamps", true], ["Helium: rocket fuel", "uses"], ["Argon: killing germs in water", "uses"], ["Neon: fertiliser", "uses"]], why: "Neon (like argon) is used in light bulbs because it is unreactive." }
+];
+BOSS_POOL[4] = { easy: BQ4.filter(function (q) { return !q.pure; }), hard: BQ4 };
+
 /* =================== PIXEL SPRITES (used if an image file is missing) =================== */
 var HERO_MAP = [
   "......kkkkk.....", ".....kHHHHHk....", "....kHHHHHHHk...", "....kHSSSSSHk...", "...kkkkSSkkkk...", "...kGGkSSkGGk...",
@@ -1261,7 +1326,7 @@ function startStage(id, toBoss) {
   G.points = 0; G.t0 = Date.now(); G.log = []; G.attempt = 0; B = null;
   G.s1 = { right: 0, total: 0, bumps: 0, restarts: 0 };
   if (toBoss) return startBoss();
-  if (id === 1) startSnake(); else if (id === 2) startBomb(); else if (id === 3) startFight();
+  if (id === 1) startSnake(); else if (id === 2) startBomb(); else if (id === 3) startFight(); else if (id === 4) startBalloon();
 }
 function logAnswer(phase, type, ok, err, text, picked, right) {
   G.log.push({ phase: phase, type: type, ok: ok, err: err, text: text, picked: picked, right: right, attempt: G.attempt });
@@ -1278,8 +1343,9 @@ function loop(t) {
   if (!document.hidden && MODE === "snake") updSnake(dt);
   if (!document.hidden && MODE === "bomb") updBomb(dt);
   if (!document.hidden && MODE === "fight") updFight(dt);
+  if (!document.hidden && MODE === "balloon") updBalloon(dt);
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) $("c-toast").hidden = true; }
-  if (MODE === "snake") drawSnake(); else if (MODE === "bomb") drawBomb(); else if (MODE === "fight") drawFight();
+  if (MODE === "snake") drawSnake(); else if (MODE === "bomb") drawBomb(); else if (MODE === "fight") drawFight(); else if (MODE === "balloon") drawBalloon();
   raf2 = requestAnimationFrame(loop);
 }
 var toastT = 0;
@@ -1323,6 +1389,7 @@ document.addEventListener("keydown", function (e) {
   if (!$("scr-boss").hidden) return bossKey(e);
   if ($("scr-play").hidden || !$("c-cover").hidden) return;
   if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+  if (MODE === "balloon") { var bk = { ArrowLeft: "l", a: "l", A: "l", ArrowRight: "r", d: "r", D: "r", ArrowUp: "f", w: "f", W: "f", " ": "f", Spacebar: "f" }[e.key]; if (bk) { e.preventDefault(); balloonKey(bk, true); } return; }
   if (MODE === "fight") {
     var n = { 1: 0, 2: 1, 3: 2, 4: 3, a: 0, b: 1, c: 2, d: 3, A: 0, B: 1, C: 2, D: 3 }[e.key];
     if (n != null) { var fb = $("c-choices").querySelectorAll("button[data-fi]")[n]; if (fb && !fb.disabled) { e.preventDefault(); fb.click(); } }
@@ -1333,12 +1400,21 @@ document.addEventListener("keydown", function (e) {
   e.preventDefault(); if (e.repeat) return;
   if (MODE === "bomb") bombHold(k); else steer(k);
 });
-document.addEventListener("keyup", function (e) { var k = KEYMAP[e.key]; if (k && MODE === "bomb") bombRelease(k); });
-window.addEventListener("blur", function () { if (BX) BX.held = null; });
+document.addEventListener("keyup", function (e) {
+  if (MODE === "balloon") { var bk = { ArrowLeft: "l", a: "l", A: "l", ArrowRight: "r", d: "r", D: "r", ArrowUp: "f", w: "f", W: "f", " ": "f", Spacebar: "f" }[e.key]; if (bk) balloonKey(bk, false); return; }
+  var k = KEYMAP[e.key]; if (k && MODE === "bomb") bombRelease(k);
+});
+window.addEventListener("blur", function () { if (BX) BX.held = null; if (BF) BF.keys = { l: false, r: false, f: false }; });
 function setPad(kind) {
   var none = kind === "none";
   $("pad").hidden = none; $("keys").hidden = none; $("c-choices").hidden = !none;
   if (none) return;
+  if (kind === "balloon") {
+    $("pad").className = "pad three";
+    $("pad").innerHTML = '<button type="button" data-k="l" aria-label="Left">◀</button><button type="button" data-k="f" class="jump" aria-label="Flap">FLAP ▲</button><button type="button" data-k="r" aria-label="Right">▶</button>';
+    $("keys").innerHTML = "hold <kbd>SPACE</kbd> or <kbd>↑</kbd> to rise · <kbd>←</kbd> <kbd>→</kbd> steer";
+    return;
+  }
   if (kind === "bomb") {
     $("pad").className = "pad bomb";
     $("pad").innerHTML = '<button type="button" data-k="l" aria-label="Left">◀</button><button type="button" data-k="u" aria-label="Up">▲</button><button type="button" data-k="d" aria-label="Down">▼</button><button type="button" data-k="r" aria-label="Right">▶</button>' +
@@ -1357,10 +1433,10 @@ function setPad(kind) {
     var b = e.target.closest("button[data-k], button[data-m]"); if (!b) return;
     e.preventDefault(); b.classList.add("on");
     if (b.dataset.m) { dropMetal(b.dataset.m); setTimeout(function () { b.classList.remove("on"); }, 120); return; }
-    if (MODE === "bomb") { try { b.setPointerCapture(e.pointerId); } catch (x) {} held[e.pointerId] = b; bombHold(b.dataset.k); return; }
+    if (MODE === "bomb" || MODE === "balloon") { try { b.setPointerCapture(e.pointerId); } catch (x) {} held[e.pointerId] = b; if (MODE === "bomb") bombHold(b.dataset.k); else balloonKey(b.dataset.k, true); return; }
     steer(b.dataset.k); setTimeout(function () { b.classList.remove("on"); }, 120);
   });
-  function up(e) { var b = held[e.pointerId]; if (!b) return; delete held[e.pointerId]; b.classList.remove("on"); bombRelease(b.dataset.k); }
+  function up(e) { var b = held[e.pointerId]; if (!b) return; delete held[e.pointerId]; b.classList.remove("on"); if (MODE === "balloon") balloonKey(b.dataset.k, false); else bombRelease(b.dataset.k); }
   p.addEventListener("pointerup", up); p.addEventListener("pointercancel", up); p.addEventListener("lostpointercapture", up);
   p.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   var sw = null;
@@ -2104,6 +2180,192 @@ function drawFight() {
   }
 }
 
+
+/* =================== STAGE 4: BALLOON FLOAT =================== */
+var BF = null, GROUND = 462;
+function startBalloon() {
+  MODE = "balloon"; show("scr-play"); setPad("balloon");
+  var waves = G.lv === "hard" ? [0, 1, 2, 3] : [0, 1, 2];
+  BF = { waves: waves, wi: 0, hearts: SNAKE_HEARTS, run: false, keys: { l: false, r: false, f: false }, balloons: [], bandits: [], parts: [], t: 0, said: 0 };
+  G.s1.bounced = 0;
+  resetFloater(); paintBalloonHud();
+  $("c-q").innerHTML = '<p class="qhead">STAGE 4 · BALLOON FLOAT</p><p class="qtext">Get ready…</p>';
+  startLoop(); fit();
+  COVER_ACT.w0 = function () { beginWave(0); };
+  cover('<div style="width:96px">' + domArt("noble") + '</div><p class="lvname">STAGE 4 · GROUP 18: NOBLE GASES</p><h2>BALLOON FLOAT</h2>' +
+    '<p class="why">"' + esc(STG.taunt) + '"</p><p class="tagline">— ' + esc(STG.boss) + "</p>" +
+    "<ul><li>Fly into the balloons that fit the rule to pop them. A wrong balloon costs a ♥.</li><li>Bond Bandit atoms will try to grab or give you electrons. You're a noble gas with a full outer shell, so they just bounce off!</li><li>The screen wraps around at the sides.</li></ul>" +
+    '<p><b>Phone/iPad:</b> hold FLAP to rise, ◀ ▶ to steer. <b>Laptop:</b> hold Space or ↑ to rise, ← → to steer.</p><div class="row"><button class="pbtn" type="button" data-go="w0">START ▶</button></div>');
+}
+function paintBalloonHud(breakIdx) {
+  var W4 = WAVES4[BF.waves[BF.wi]];
+  $("c-lv").innerHTML = "STAGE 4 · BALLOON FLOAT<span>WAVE " + (BF.wi + 1) + "/" + BF.waves.length + " · " + W4.name + "</span>";
+  $("c-hearts").innerHTML = heartsHTML(BF.hearts, SNAKE_HEARTS, breakIdx);
+  $("c-pts").textContent = G.points;
+}
+function resetFloater() { BF.x = W / 2; BF.y = GROUND - 10; BF.vx = 0; BF.vy = 0; BF.face = 1; BF.inv = 0; }
+function waveNeed() { var W4 = WAVES4[BF.waves[BF.wi]]; return G.lv === "hard" ? 3 : W4.need; }
+function beginWave(wi) {
+  BF.wi = wi; BF.hearts = SNAKE_HEARTS; BF.found = 0; BF.balloons = []; BF.bandits = []; BF.run = false;
+  resetFloater(); paintBalloonHud();
+  var W4 = WAVES4[BF.waves[wi]];
+  cover('<p class="lvname">WAVE ' + (wi + 1) + " OF " + BF.waves.length + "</p><h2>" + W4.name + '</h2><p class="why">' + W4.text + '</p><p class="why">Pop ' + waveNeed() + " correct balloons to clear the wave.</p>" +
+    (wi === 0 ? '<div class="eg"><span>Ne</span><span>2,8</span><span>full outer shell ✓</span></div>' : "") + '<div class="row"><button class="pbtn" type="button" data-go="wgo">GO ▶</button></div>');
+  COVER_ACT.wgo = function () {
+    for (var i = 0; i < 5; i++) spawnBalloon(H - 60 - i * 90 + rint(-20, 20));
+    var nb = 1 + Math.min(wi, 2);
+    for (i = 0; i < nb; i++) spawnBandit(i);
+    BF.run = true; BF.ready = 0.8; paintBalloonQ();
+  };
+}
+function paintBalloonQ() {
+  var W4 = WAVES4[BF.waves[BF.wi]];
+  $("c-q").innerHTML = '<p class="qhead">WAVE ' + (BF.wi + 1) + "/" + BF.waves.length + " · " + W4.name + '</p><p class="qtext">' + W4.text + '</p><p class="qhint">Popped ' + BF.found + " of " + waveNeed() + ".</p>";
+  fit();
+}
+var BCOLS = ["#FF7FB0", "#2EF2E0", "#FCE883", "#FF8243", "#C77DFF", "#4CF08A"];
+function spawnBalloon(y) {
+  var W4 = WAVES4[BF.waves[BF.wi]];
+  var goodOnScreen = BF.balloons.filter(function (b) { return b.ok; }).length;
+  var ok = goodOnScreen < 2 ? true : Math.random() < .45, list = ok ? W4.good : W4.bad;
+  var used = BF.balloons.map(function (b) { return b.label; });
+  var choices = list.filter(function (l) { return used.indexOf(l[0]) < 0; }); if (!choices.length) choices = list;
+  var c = pick(choices), x, tries = 0;
+  do { x = rint(40, W - 40); tries++; } while (tries < 20 && BF.balloons.some(function (b) { return Math.abs(b.x - x) < 70 && Math.abs(b.y - (y == null ? H + 40 : y)) < 90; }));
+  BF.balloons.push({ x: x, y: y == null ? H + 40 : y, label: c[0], why: c[1], ok: ok, col: pick(BCOLS), sp: rint(22, 36), ph: Math.random() * 6 });
+}
+function spawnBandit(i) {
+  var b = BANDITS[i % BANDITS.length];
+  BF.bandits.push({ s: b.s, col: b.col, say: b.say, x: i % 2 ? 40 : W - 40, y: 120 + i * 90, vx: (i % 2 ? 1 : -1) * rint(45, 70), vy: rint(-30, 30), cd: 0 });
+}
+function balloonKey(k, down) { if (BF) BF.keys[k] = down; }
+function updBalloon(dt) {
+  BF.t += dt;
+  BF.parts = BF.parts.filter(function (p) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 260 * dt; return p.t < .8; });
+  if (!BF.run) return;
+  if (BF.ready > 0) { BF.ready -= dt; return; }
+  if (BF.inv > 0) BF.inv -= dt;
+  // the floater: gravity, flapping, steering, wrap-around
+  var k = BF.keys;
+  if (k.l) { BF.vx -= 520 * dt; BF.face = -1; } if (k.r) { BF.vx += 520 * dt; BF.face = 1; }
+  if (!k.l && !k.r) BF.vx *= Math.pow(.25, dt);
+  BF.vx = Math.max(-170, Math.min(170, BF.vx));
+  BF.vy += (k.f ? -420 : 300) * dt; BF.vy = Math.max(-200, Math.min(220, BF.vy));
+  BF.x += BF.vx * dt; BF.y += BF.vy * dt;
+  if (BF.x < -20) BF.x += W + 40; if (BF.x > W + 20) BF.x -= W + 40;
+  if (BF.y < 70) { BF.y = 70; BF.vy = Math.max(0, BF.vy); }
+  if (BF.y > GROUND) { BF.y = GROUND; BF.vy = 0; }
+  // balloons rise and sway
+  BF.balloons.forEach(function (b) { b.y -= b.sp * dt; b.ph += dt; b.dx = Math.sin(b.ph * 1.3) * 10; });
+  BF.balloons = BF.balloons.filter(function (b) { return b.y > -60; });
+  while (BF.balloons.length < 5) spawnBalloon();
+  // collisions with balloons: the floater's body and balloons count
+  var px = BF.x, py = BF.y - 52;
+  for (var i = 0; i < BF.balloons.length; i++) {
+    var b = BF.balloons[i], bx = b.x + (b.dx || 0);
+    if (Math.abs(bx - px) < 38 && Math.abs(b.y - py) < 46) { popBalloon(b, i); break; }
+  }
+  // bond bandits bounce around, and bounce off you
+  BF.bandits.forEach(function (d) {
+    d.x += d.vx * dt; d.y += d.vy * dt + Math.sin(BF.t * 2 + d.x / 50) * 12 * dt; if (d.cd > 0) d.cd -= dt;
+    if (d.x < 20 || d.x > W - 20) { d.vx *= -1; d.x = Math.max(20, Math.min(W - 20, d.x)); }
+    if (d.y < 80 || d.y > GROUND - 40) { d.vy *= -1; d.y = Math.max(80, Math.min(GROUND - 40, d.y)); }
+    var dx = BF.x - d.x, dy = (BF.y - 40) - d.y, dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 46 && d.cd <= 0) {
+      d.cd = .8; G.s1.bounced++; Sound.tone(880, "triangle", .12, .06, 0, 1400);
+      var nx = dx / (dist || 1), ny = dy / (dist || 1);
+      BF.vx += nx * 220; BF.vy += ny * 160; d.vx = -nx * Math.abs(d.vx || 60); d.vy = -ny * 60;
+      for (var j = 0; j < 8; j++) BF.parts.push({ x: d.x, y: d.y, vx: (Math.random() - .5) * 160, vy: -Math.random() * 120, t: 0, c: "#2EF2E0" });
+      if (BF.said < 3) { BF.said++; toast("<b>Bounced!</b> " + d.say, false, 3.2); }
+      else toast("<b>FULL SHELL!</b> No bond.", false, 1);
+    }
+  });
+}
+function popBalloon(b, i) {
+  BF.balloons.splice(i, 1);
+  var W4 = WAVES4[BF.waves[BF.wi]], text = stripB(W4.text);
+  logAnswer("s1", W4.type, b.ok, b.ok ? null : W4.err, text, b.label, W4.good.map(function (g) { return g[0]; }).join(" / "));
+  for (var j = 0; j < 14; j++) BF.parts.push({ x: b.x, y: b.y, vx: (Math.random() - .5) * 240, vy: -Math.random() * 200, t: 0, c: b.ok ? b.col : "#FF4D5E" });
+  if (b.ok) {
+    BF.found++; addPoints(100); Sound.ok(); toast("<b>Pop!</b> " + esc(b.why), false, 2.4);
+    paintBalloonQ();
+    if (BF.found >= waveNeed()) waveDone();
+  } else {
+    Sound.bad(); toast("<b>Wrong balloon!</b> " + esc(b.why), true, 4);
+    if (BF.inv <= 0) { BF.inv = 1; BF.hearts--; Sound.hurt(); paintBalloonHud(BF.hearts); }
+    if (BF.hearts <= 0) {
+      BF.run = false; G.s1.restarts++;
+      COVER_ACT.wretry = function () { beginWave(BF.wi); };
+      setTimeout(function () { cover('<h2 class="red">OUT OF HEARTS!</h2><p>' + esc(STG.boss) + ' yawns. Read the tips, then try this wave again.</p><div class="row"><button class="pbtn" type="button" data-go="wretry">RETRY WAVE ↻</button></div>'); }, 700);
+    }
+  }
+}
+function waveDone() {
+  BF.run = false; Sound.clear();
+  var last = BF.wi === BF.waves.length - 1;
+  COVER_ACT.wnext = function () { if (last) startBoss(); else beginWave(BF.wi + 1); };
+  setTimeout(function () {
+    Sound.level();
+    cover(last ? '<div style="width:96px">' + domArt("noble") + '</div><h2>STAGE CLEAR!</h2><p>Bond Bandits bounced off you ' + G.s1.bounced + ' times. Full shells for the win!</p><p>' + esc(STG.boss) + ' descends from the sky!</p><p class="why">Answer before his attack charges up. Each correct answer hits him once.</p><div class="row"><button class="pbtn" type="button" data-go="wnext">FIGHT ▶</button></div>'
+      : '<h2>WAVE CLEAR!</h2><p>' + WAVES4[BF.waves[BF.wi]].name + " done. Points: " + G.points + '.</p><div class="row"><button class="pbtn" type="button" data-go="wnext">NEXT WAVE ▶</button></div>');
+  }, 400);
+}
+function drawBalloonLabel(txt, x, y) {
+  ctx.font = "800 12px 'Open Sans', sans-serif";
+  var words = txt.split(" "), lines = [], cur = "";
+  words.forEach(function (w) { var t = cur ? cur + " " + w : w; if (ctx.measureText(t).width > 96 && cur) { lines.push(cur); cur = w; } else cur = t; }); if (cur) lines.push(cur);
+  var wmax = Math.max.apply(null, lines.map(function (l) { return ctx.measureText(l).width; })) + 12, hh = lines.length * 14 + 6;
+  ctx.fillStyle = "#FFFFFF"; rr(x - wmax / 2, y, wmax, hh, 5); ctx.fill(); ctx.strokeStyle = "#0D0B1A"; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = "#0D0B1A"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  lines.forEach(function (l, i) { ctx.fillText(l, x, y + 4 + i * 14); });
+}
+function drawBalloon() {
+  var t = BF.t;
+  var g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#1A1240"); g.addColorStop(.7, "#2A2060"); g.addColorStop(1, "#3A2E6E"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "rgba(255,255,255,.6)"; for (var s = 0; s < 30; s++) { var sx = (s * 97) % W, sy = (s * 53) % 300; ctx.fillRect(sx, sy, s % 3 ? 2 : 3, s % 3 ? 2 : 3); }
+  // clouds
+  ctx.fillStyle = "rgba(255,255,255,.08)"; [[60, 180], [300, 120], [200, 300]].forEach(function (c, i) { var cx = (c[0] + t * (8 + i * 4)) % (W + 120) - 60; circ(cx, c[1], 30); ctx.fill(); circ(cx + 30, c[1] + 6, 24); ctx.fill(); circ(cx - 28, c[1] + 8, 20); ctx.fill(); });
+  // ground
+  ctx.fillStyle = "#19152E"; ctx.fillRect(0, GROUND + 2, W, H - GROUND); ctx.fillStyle = "#4CF08A"; ctx.fillRect(0, GROUND + 2, W, 6);
+  ctx.fillStyle = "#2A2448"; for (var x = 0; x < W; x += 24) ctx.fillRect(x + 4, GROUND + 14, 14, 8);
+  // balloons
+  BF.balloons.forEach(function (b) {
+    var bx = b.x + (b.dx || 0), by = b.y;
+    ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(bx, by + 24); ctx.quadraticCurveTo(bx + 6, by + 32, bx, by + 40); ctx.stroke();
+    ctx.fillStyle = b.col; ctx.beginPath(); ctx.ellipse(bx, by, 21, 25, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#0D0B1A"; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.beginPath(); ctx.ellipse(bx - 7, by - 9, 5, 8, -.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = b.col; ctx.beginPath(); ctx.moveTo(bx - 4, by + 26); ctx.lineTo(bx + 4, by + 26); ctx.lineTo(bx, by + 21); ctx.fill();
+    drawBalloonLabel(b.label, bx, by + 40);
+  });
+  // bond bandits
+  BF.bandits.forEach(function (d) {
+    ctx.fillStyle = d.col; circ(d.x, d.y, 20); ctx.fill(); ctx.strokeStyle = "#0D0B1A"; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = "#0D0B1A"; ctx.font = "800 14px 'Open Sans', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(d.s, d.x, d.y + 5);
+    ctx.fillStyle = "#fff"; ctx.fillRect(d.x - 10, d.y - 11, 7, 6); ctx.fillRect(d.x + 3, d.y - 11, 7, 6); ctx.fillStyle = "#0D0B1A"; ctx.fillRect(d.x - 8, d.y - 10, 3, 4); ctx.fillRect(d.x + 5, d.y - 10, 3, 4);
+    // orbiting electron
+    var a = t * 4 + d.x / 30; ctx.fillStyle = "#FCE883"; circ(d.x + Math.cos(a) * 28, d.y + Math.sin(a) * 14, 4); ctx.fill();
+  });
+  // the floater: hero holding two balloons, wrapped in a full-shell bubble
+  var blink = BF.inv > 0 && Math.floor(BF.inv * 8) % 2 === 0;
+  if (!blink) {
+    var fx = BF.x, fy = BF.y, bob = Math.sin(t * 5) * 2;
+    [[-12, "#FF7FB0"], [12, "#2EF2E0"]].forEach(function (p) {
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(fx + p[0] * .9, fy - 92 + bob + 16); ctx.lineTo(fx + p[0] * .3, fy - 40); ctx.stroke();
+      ctx.fillStyle = p[1]; ctx.beginPath(); ctx.ellipse(fx + p[0], fy - 92 + bob, 13, 16, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#0D0B1A"; ctx.lineWidth = 2.5; ctx.stroke();
+    });
+    var hs = SP.hero, hh = 52, hw = hh * hs.w / hs.h;
+    ctx.save(); ctx.imageSmoothingEnabled = !hs.pixel; ctx.translate(fx, fy); if (BF.face < 0) ctx.scale(-1, 1); ctx.drawImage(hs.el, -hw / 2, -hh, hw, hh); ctx.restore();
+    ctx.strokeStyle = "rgba(46,242,224," + (.35 + .2 * Math.sin(t * 6)) + ")"; ctx.lineWidth = 2; circ(fx, fy - 42, 40); ctx.stroke();
+    if (BF.keys.f && BF.run) { ctx.fillStyle = "rgba(255,255,255,.5)"; ctx.fillRect(fx - 3 + Math.sin(t * 40) * 4, fy + 2, 6, 6); }
+  }
+  BF.parts.forEach(function (p) { ctx.globalAlpha = 1 - p.t / .8; ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 5, 5); }); ctx.globalAlpha = 1;
+  if (BF.run && BF.ready > 0) {
+    ctx.fillStyle = "rgba(13,11,26,.55)"; ctx.fillRect(0, H / 2 - 40, W, 80);
+    ctx.fillStyle = "#FCE883"; ctx.font = "20px 'Press Start 2P', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("READY?", W / 2, H / 2);
+  }
+}
+
 /* =================== BOSS FIGHT =================== */
 var B = null, raf = 0;
 function paintBossSprites() {
@@ -2301,7 +2563,7 @@ function buildPayload(R) {
   var res = B.win ? "cleared" : "not cleared";
   var summary = "Stage " + STG.id + " " + STG.boss + " | Boss attempt " + G.attempt + " (" + res + ") | Level: " + lvName +
     " | Accuracy: " + R.pct + "% | Wrong most: " + most +
-    " | " + STG.game + ": " + G.s1.right + "/" + G.s1.total + (STG.id === 3 ? ", K.O.s " + G.s1.ko + ", no-reactions spotted " + G.s1.noreact + ", round restarts " : STG.id === 2 ? ", perfect blasts " + G.s1.perfect + ", overkill " + G.s1.overkill + ", too weak " + G.s1.weak + ", hurt " + G.s1.hurt + ", room restarts " : ", self-bumps " + G.s1.bumps + ", round restarts ") + G.s1.restarts +
+    " | " + STG.game + ": " + G.s1.right + "/" + G.s1.total + (STG.id === 4 ? ", bandits bounced " + G.s1.bounced + ", wave restarts " : STG.id === 3 ? ", K.O.s " + G.s1.ko + ", no-reactions spotted " + G.s1.noreact + ", round restarts " : STG.id === 2 ? ", perfect blasts " + G.s1.perfect + ", overkill " + G.s1.overkill + ", too weak " + G.s1.weak + ", hurt " + G.s1.hurt + ", room restarts " : ", self-bumps " + G.s1.bumps + ", round restarts ") + G.s1.restarts +
     " | Boss: hits " + B.correct + "/" + B.n + " (needed " + B.maxhp + "), best combo " + B.bestCombo + (B.used.length ? ", powers used " + B.used.join(", ") : "") +
     " | By topic: " + types + " | Errors: " + errs;
   var wrong = R.log.filter(function (x) { return !x.ok; }).map(function (x) {
@@ -2350,7 +2612,7 @@ var Confetti = {
   stop: function () { this.on = false; this.c.hidden = true; }
 };
 
-if (/debug/.test(location.hash)) window.__PP = { G: G, S: function () { return S; }, B: function () { return B; }, EL: EL, BQ1: BQ1, placeQs: placeQs, pickPrompts: pickPrompts, startBoss: startBoss, startStage: startStage, eat: eat, BX: function () { return BX; }, dropMetal: dropMetal, tryMove: tryMove, seqPrompts: seqPrompts, BQ2: BQ2, BQ3: BQ3, FX: function () { return FX; }, f2Steps: f2Steps, steer: steer, buildPayload: buildPayload, finish: finish };
+if (/debug/.test(location.hash)) window.__PP = { G: G, S: function () { return S; }, B: function () { return B; }, EL: EL, BQ1: BQ1, placeQs: placeQs, pickPrompts: pickPrompts, startBoss: startBoss, startStage: startStage, eat: eat, BX: function () { return BX; }, dropMetal: dropMetal, tryMove: tryMove, seqPrompts: seqPrompts, BQ2: BQ2, BQ3: BQ3, FX: function () { return FX; }, f2Steps: f2Steps, BF: function () { return BF; }, BQ4: BQ4, steer: steer, buildPayload: buildPayload, finish: finish };
 
 })();
 </script>
