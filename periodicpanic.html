@@ -449,6 +449,15 @@ canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-
   body:not(.touch) .pad.bomb button[data-m] small { font-size: .5rem; margin-top: 4px; }
 }
 body:not(.touch) .pad.bomb + .keys { display: block; }
+/* Halogen Fighter answer buttons */
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-width: 560px; width: 100%; align-self: center; }
+.choices .qopt { font-size: .98rem; padding: 8px 10px; line-height: 1.35; }
+.choices .pbtn { grid-column: 1 / -1; }
+.qopt .sw { width: 20px; height: 20px; border: 2px solid #fff; border-radius: 4px; flex: none; }
+.qfbline { margin: 4px 0 0; font-weight: 600; font-size: .95rem; color: #D6D1F0; }
+.qfbline b.ok { color: var(--neon-green); } .qfbline b.no { color: var(--neon-red); }
+@media (min-width: 820px) and (min-aspect-ratio: 1/1) { #c-choices { grid-area: pad; grid-template-columns: 1fr; } }
+@media (max-width: 819px), (max-aspect-ratio: 1/1) { .choices .qopt { font-size: .86rem; padding: 6px 8px; } .choices { gap: 6px; } .qfbline { font-size: .8rem; } }
 </style>
 </head>
 <body>
@@ -491,7 +500,7 @@ body:not(.touch) .pad.bomb + .keys { display: block; }
       <div class="modes four">
         <div class="mode-card"><b>1 · Professor Trend</b><span>Trend Snake: periodic trends</span><small>Everyone</small></div>
         <div class="mode-card"><b>2 · Blaze Alkali</b><span>Alkali Blast: Group 1</span><small>Everyone</small></div>
-        <div class="mode-card"><b>3 · Halo Queen</b><span>Street Fighter: Group 17</span><small>Coming soon</small></div>
+        <div class="mode-card"><b>3 · Halo Queen</b><span>Halogen Fighter: Group 17</span><small>Everyone</small></div>
         <div class="mode-card"><b>4 · Sir Noble</b><span>Balloon Fight: Group 18</span><small>Coming soon</small></div>
       </div>
     </div>
@@ -546,6 +555,7 @@ body:not(.touch) .pad.bomb + .keys { display: block; }
     </div>
     <p class="rotate">Turn your phone upright for a bigger view.</p>
     <div class="pad four" id="pad"></div>
+    <div class="choices" id="c-choices" hidden></div>
     <p class="keys" id="keys"></p>
   </section>
 
@@ -656,8 +666,9 @@ var STAGES = [
   { id: 2, key: "alkali", boss: "BLAZE ALKALI", title: "Group 1: alkali metals", game: "Alkali Blast", ready: true,
     power: { id: "fizz", name: "FIZZ BLAST", desc: "Your next correct answer hits twice" },
     taunt: "My walls laugh at your puny metals! Only the RIGHT metal in the RIGHT puddle will get you through my lab!" },
-  { id: 3, key: "halo", boss: "HALO QUEEN", title: "Group 17: halogens", game: "Street Fighter", ready: false,
-    power: { id: "swap", name: "DISPLACER", desc: "Swaps this question for a new one" } },
+  { id: 3, key: "halo", boss: "HALO QUEEN", title: "Group 17: halogens", game: "Halogen Fighter", ready: true,
+    power: { id: "swap", name: "DISPLACER", desc: "Swaps this question for a new one" },
+    taunt: "Bow before the Halo Queen! My halogens rule the ring. Only a MORE reactive fighter can knock out my champions!" },
   { id: 4, key: "noble", boss: "SIR NOBLE", title: "Group 18: noble gases", game: "Balloon Fight", ready: false,
     power: { id: "shield", name: "INERT SHIELD", desc: "Blocks the damage from one wrong answer" } }
 ];
@@ -696,7 +707,8 @@ var TYPES = {
   order: "Order of elements", place: "Period & group", valence: "Valence electrons", group: "Same group, similar properties",
   metal: "Metal or non-metal", predict: "Predicting properties", charge: "Ion charges",
   sequence: "Down a group / across a period", amph: "Amphoteric oxides",
-  react: "Reactivity with water", observe: "Observations with water", props: "Physical properties", products: "Products with water"
+  react: "Reactivity with water", observe: "Observations with water", props: "Physical properties", products: "Products with water",
+  halprops: "Halogen colour & state", trend17: "Group 17 trends", halreact: "Halogen reactivity", disp: "Displacement reactions", solcol: "Colour changes"
 };
 var ERR = {
   order: { label: "Ordered by mass", tip: "The Periodic Table is arranged by increasing proton number. Mass usually goes up too, but not always: argon (18 protons) comes before potassium (19 protons)." },
@@ -713,6 +725,12 @@ var ERR = {
   observe: { label: "Observation mix-up", tip: "All three float and fizz (hydrogen). Lithium fizzes steadily; sodium melts into a silvery ball and darts about; potassium also bursts into a lilac flame." },
   props: { label: "Physical property mix-up", tip: "Group 1 metals are soft (cut with a knife) and have low densities (they float on water). Melting point decreases down the group." },
   products: { label: "Products mix-up", tip: "Group 1 metal + water → metal hydroxide + hydrogen. The hydroxide makes the solution alkaline." },
+  halprops: { label: "Halogen colour/state mix-up", tip: "At room temperature: chlorine is a pale yellow-green gas, bromine a reddish-brown liquid, iodine a black solid (purple vapour when warmed)." },
+  diatomic: { label: "Forgot halogens are diatomic", tip: "Halogens exist as diatomic molecules: Cl₂, Br₂, I₂. Always write them with a 2." },
+  trend17: { label: "Group 17 trend mix-up", tip: "Down Group 17: the colour gets darker and melting/boiling points increase (gas → liquid → solid)." },
+  halreact: { label: "Halogen reactivity mix-up", tip: "Reactivity decreases down Group 17: F₂ > Cl₂ > Br₂ > I₂ > At₂." },
+  disp: { label: "Displacement mix-up", tip: "A more reactive halogen displaces a less reactive halogen from its halide solution, e.g. Cl₂ + 2KBr → 2KCl + Br₂. A less reactive halogen cannot." },
+  solcol: { label: "Solution colour mix-up", tip: "Halide solutions are colourless. If bromine forms, the solution turns orange (yellow-brown); if iodine forms, it turns brown." },
   timeout: { label: "Ran out of time", tip: "The boss struck first. Answer within the time limit." }
 };
 
@@ -923,6 +941,132 @@ var BQ2 = G_OBS.concat(G_PROPS, G_PROD, G_PRED, [
 ]);
 BOSS_POOL[2] = { easy: BQ2, hard: BQ2 };
 
+/* =================== STAGE 3 CONTENT: HALOGEN FIGHTER =================== */
+var HAL = {
+  F: { f: "F₂", name: "fluorine", look: "pale yellow gas", col: "#F3EE9A", state: "gas", r: 4 },
+  Cl: { f: "Cl₂", name: "chlorine", look: "pale yellow-green gas", col: "#C9E86A", state: "gas", r: 3, aq: "pale yellow-green", aqCol: "#DDF59A" },
+  Br: { f: "Br₂", name: "bromine", look: "reddish-brown liquid", col: "#9B3420", state: "liquid", r: 2, aq: "orange (yellow-brown)", aqCol: "#F0A030" },
+  I: { f: "I₂", name: "iodine", look: "black solid", col: "#2B2B33", state: "solid", r: 1, aq: "brown", aqCol: "#7A4A1E", aura: true },
+  At: { f: "At₂", name: "astatine", look: "black solid", col: "#141418", state: "solid", r: 0 }
+};
+var SALTS = [
+  { f: "KCl(aq)", m: "K", x: "Cl", ion: "chloride", nick: "CHLORIDE CHUMP" },
+  { f: "KBr(aq)", m: "K", x: "Br", ion: "bromide", nick: "BROMIDE BRUTE" },
+  { f: "KI(aq)", m: "K", x: "I", ion: "iodide", nick: "IODIDE IVY" },
+  { f: "NaCl(aq)", m: "Na", x: "Cl", ion: "chloride", nick: "SALTY SAL" },
+  { f: "NaBr(aq)", m: "Na", x: "Br", ion: "bromide", nick: "BROMIDE BRAWLER" },
+  { f: "NaI(aq)", m: "Na", x: "I", ion: "iodide", nick: "IODIDE IKE" }
+];
+var LOOKS = { "pale yellow-green gas": "#C9E86A", "reddish-brown liquid": "#9B3420", "black solid": "#2B2B33", "colourless gas": "transparent", "pale yellow gas": "#F3EE9A", "silvery solid": "#C9CED6" };
+var AQCOL = { "orange (yellow-brown)": "#F0A030", "brown": "#7A4A1E", "colourless": "transparent", "purple": "#9B5CFF", "pale yellow-green": "#DDF59A" };
+function hsym(k) { return HAL[k].f.replace("₂", ""); }
+function eqn(hk, s) { return HAL[hk].f + " + 2" + s.m + hsym(s.x) + " → 2" + s.m + hsym(hk) + " + " + HAL[s.x].f; }
+function reacts(hk, s) { return HAL[hk].r > HAL[s.x].r; }
+
+// a predict step: will this halogen displace the halide? (scene is shared by all the steps of one match)
+function stepPredict(hk, s, scene) {
+  var ok = reacts(hk, s), A = HAL[hk], B = HAL[s.x];
+  return { type: "disp", scene: scene, kind: "predict", hk: hk, salt: s,
+    q: A.f + " (" + A.name + " water) is added to " + s.f + ". Will " + A.name + " K.O. the " + s.ion + "?",
+    opts: [["K.O.! " + cap(A.name) + " displaces " + B.name, ok || "disp"], ["No reaction", !ok || "disp"]],
+    why: ok ? cap(A.name) + " is more reactive than " + B.name + ", so it displaces it: " + eqn(hk, s) + "."
+      : cap(A.name) + " is less reactive than " + B.name + ", so it cannot displace it. The solution stays " + A.aq + "." };
+}
+function stepColour(hk, s, scene) {
+  var B = HAL[s.x], right = B.aq;
+  var opts = ["orange (yellow-brown)", "brown", "colourless", "purple"];
+  return { type: "solcol", scene: scene, kind: "colour", hk: hk, salt: s,
+    q: "K.O.! " + cap(HAL[hk].name) + " displaced " + B.name + " from the colourless " + s.f + ". What colour is the solution now?",
+    opts: opts.map(function (o) { return [cap(o), o === right || "solcol", AQCOL[o]]; }),
+    why: cap(B.name) + " (" + B.f + ") was formed. " + cap(B.name) + " in water is " + right + "." + (s.x === "I" ? " (Iodine is only purple as a vapour.)" : "") };
+}
+function stepEquation(hk, s, scene) {
+  var A = hsym(hk), Bx = hsym(s.x), M = s.m;
+  return { type: "disp", scene: scene, kind: "equation", hk: hk, salt: s,
+    q: "Finishing move! Which equation shows this reaction?",
+    opts: [[eqn(hk, s), true], [HAL[s.x].f + " + 2" + M + A + " → 2" + M + Bx + " + " + HAL[hk].f, "disp"], [A + " + " + M + Bx + " → " + M + A + " + " + Bx, "diatomic"], [HAL[hk].f + " + " + M + Bx + " → " + M + A + "₂ + " + Bx, "disp"]],
+    why: "The more reactive halogen takes the place of the less reactive one: " + eqn(hk, s) + ". Halogens are diatomic, so 2" + M + Bx + " are needed." };
+}
+
+// Round 1: character select. Unlock each fighter by its colour and state, then the Group 17 trends.
+function f1Steps() {
+  var looks = ["pale yellow-green gas", "reddish-brown liquid", "black solid", "colourless gas"];
+  var steps = shuffle(["Cl", "Br", "I"]).map(function (k) {
+    var H = HAL[k], sc = { kind: "select", focus: k, roster: ["Cl", "Br", "I"] };
+    return { type: "halprops", scene: sc, unlock: k,
+      q: "Unlock " + H.f + "! What does " + H.name + " look like at room temperature?",
+      opts: looks.map(function (l) { return [cap(l), l === H.look || "halprops", LOOKS[l]]; }),
+      why: cap(H.name) + " is a " + H.look + " at room temperature." + (k === "I" ? " When warmed, it gives off a purple vapour." : "") };
+  });
+  var lu = { kind: "lineup", roster: ["Cl", "Br", "I"] };
+  steps.push({ type: "halprops", scene: lu, q: "Look at your fighters' badges. Each halogen exists as…", opts: [["diatomic molecules, e.g. Cl₂", true], ["single atoms, e.g. Cl", "diatomic"], ["ions, e.g. Cl⁻", "diatomic"], ["a giant metallic lattice", "metal"]], why: "Halogens are diatomic non-metals: two atoms joined by a covalent bond (Cl₂, Br₂, I₂)." });
+  steps.push({ type: "trend17", scene: lu, q: "Going DOWN Group 17 from chlorine to iodine, the colour…", opts: [["gets darker", true], ["gets lighter", "trend17"], ["stays the same", "trend17"], ["changes from black to pale green", "trend17"]], why: "Pale yellow-green → reddish-brown → black: the colour gets darker down the group." });
+  steps.push({ type: "trend17", scene: lu, q: "Gas → liquid → solid going down the group. This shows that the melting and boiling points…", opts: [["increase down the group", true], ["decrease down the group", "trend17"], ["stay the same", "trend17"], ["are all below 0 °C", "trend17"]], why: "Melting and boiling points increase down Group 17, so the state changes from gas to liquid to solid at room temperature." });
+  return steps;
+}
+// Round 2: the tournament. Displacement: K.O. or no reaction, then the colour and the equation.
+function f2Steps() {
+  var steps = [], ko = [["Cl", "Br"], ["Cl", "I"], ["Br", "I"]], no = [["I", "Br"], ["I", "Cl"], ["Br", "Cl"]];
+  function salt(x) { return pick(SALTS.filter(function (s) { return s.x === x; })); }
+  function match(pair, extra) {
+    var s = salt(pair[1]), sc = { kind: "fight", left: pair[0], salt: s, hp: 1 + extra.length, max: 1 + extra.length };
+    steps.push(stepPredict(pair[0], s, sc));
+    extra.forEach(function (f) { steps.push(f(pair[0], s, sc)); });
+  }
+  steps.push({ type: "halreact", scene: { kind: "lineup", roster: ["Cl", "Br", "I"], arrow: true }, q: "Before the tournament: rank your fighters from MOST to LEAST reactive.",
+    opts: [["Cl₂ > Br₂ > I₂", true], ["I₂ > Br₂ > Cl₂", "halreact"], ["Br₂ > Cl₂ > I₂", "halreact"], ["Cl₂ > I₂ > Br₂", "halreact"]], why: "Reactivity decreases down Group 17: chlorine is the most reactive of the three, iodine the least." });
+  var k = shuffle(ko), n = shuffle(no);
+  match(k[0], [stepColour, stepEquation]);
+  match(n[0], []);
+  var px = pick(["Cl", "Br", "I"]), ps = salt(px), win = ["Cl", "Br", "I"].filter(function (h) { return HAL[h].r > HAL[px].r; });
+  var label = { "": "None of them", "Cl": "Chlorine only", "Br": "Bromine only", "Cl,Br": "Chlorine and bromine" };
+  steps.push({ type: "disp", kind: "pick", scene: { kind: "pick", salt: ps, hp: 1, max: 1, winners: win }, salt: ps,
+    q: "Who can K.O. " + ps.f + "? Pick the fighter(s) that will displace " + HAL[px].name + ".",
+    opts: ["None of them", "Chlorine only", "Bromine only", "Chlorine and bromine"].map(function (o) { return [o, o === label[win.join(",")] || "disp"]; }),
+    why: win.length ? "Only a halogen more reactive than " + HAL[px].name + " can displace it: " + win.map(function (h) { return HAL[h].name; }).join(" and ") + "." : "Chlorine is the most reactive of the three, so no fighter here can displace chloride." });
+  match(k[1], [stepColour]);
+  match(n[1], []);
+  return steps;
+}
+// Round 3: the secret fighters F₂ and At₂: predict their properties.
+function f3Steps() {
+  var ro = ["F", "Cl", "Br", "I", "At"];
+  return [
+    { type: "predict", unlock: "F", scene: { kind: "select", focus: "F", roster: ro }, q: "Secret fighter F₂ (fluorine) is ABOVE chlorine in Group 17. Predict what fluorine looks like at room temperature.",
+      opts: [["Pale yellow gas", true, LOOKS["pale yellow gas"]], ["Black solid", "predict", LOOKS["black solid"]], ["Reddish-brown liquid", "predict", LOOKS["reddish-brown liquid"]], ["Silvery solid", "metal", LOOKS["silvery solid"]]],
+      why: "Up the group, colours get lighter and melting points lower, so fluorine is a pale yellow gas." },
+    { type: "predict", unlock: "At", scene: { kind: "select", focus: "At", roster: ro }, q: "Secret fighter At₂ (astatine) is BELOW iodine. Predict what astatine looks like at room temperature.",
+      opts: [["Black solid", true, LOOKS["black solid"]], ["Pale yellow gas", "predict", LOOKS["pale yellow gas"]], ["Colourless gas", "predict", LOOKS["colourless gas"]], ["Reddish-brown liquid", "predict", LOOKS["reddish-brown liquid"]]],
+      why: "Down the group, colours get darker and melting points higher, so astatine is a black solid like iodine." },
+    { type: "predict", scene: { kind: "lineup", roster: ro, arrow: true }, q: "Which halogen is the MOST reactive?",
+      opts: [["Fluorine", true], ["Astatine", "predict"], ["Iodine", "predict"], ["Chlorine", "predict"]], why: "Reactivity decreases down Group 17, so fluorine, at the top, is the most reactive." },
+    { type: "predict", scene: { kind: "lineup", roster: ro, arrow: true }, q: "Astatine (At₂) is added to potassium iodide solution. Predict what happens.",
+      opts: [["No reaction: astatine is less reactive than iodine", true], ["K.O.: astatine displaces iodine", "disp"], ["K.O.: iodine displaces astatine", "disp"], ["Astatine dissolves to form a purple solution", "predict"]], why: "Astatine is below iodine, so it is less reactive and cannot displace iodide." }
+  ];
+}
+var FROUNDS = [
+  { name: "CHARACTER SELECT", build: f1Steps, tip: "Unlock your three halogen fighters by naming how each one looks at room temperature." },
+  { name: "TOURNAMENT", build: f2Steps, tip: "A <b>more reactive</b> halogen K.O.s (displaces) a less reactive one from its halide solution. Predict each fight!" },
+  { name: "SECRET FIGHTERS", build: f3Steps, tip: "Two hidden fighters: fluorine above chlorine, astatine below iodine. Use the Group 17 trends to predict them." }
+];
+
+/* =================== BOSS QUESTIONS: HALO QUEEN =================== */
+function bq3Predict() { var all = [["Cl", "Br"], ["Cl", "I"], ["Br", "I"], ["I", "Br"], ["I", "Cl"], ["Br", "Cl"]], p = pick(all), s = pick(SALTS.filter(function (x) { return x.x === p[1]; })); return stepPredict(p[0], s, null); }
+function bq3Colour() { var p = pick([["Cl", "Br"], ["Cl", "I"], ["Br", "I"]]), s = pick(SALTS.filter(function (x) { return x.x === p[1]; })); var st = stepColour(p[0], s, null); st.q = cap(HAL[p[0]].name) + " water is added to colourless " + s.f + ". What colour does the solution turn?"; return st; }
+function bq3Eq() { var p = pick([["Cl", "Br"], ["Cl", "I"], ["Br", "I"]]), s = pick(SALTS.filter(function (x) { return x.x === p[1]; })); var st = stepEquation(p[0], s, null); st.q = "Which equation shows " + HAL[p[0]].name + " reacting with " + s.f.replace("(aq)", "") + " solution?"; return st; }
+var BQ3 = [
+  bq3Predict, bq3Predict, bq3Colour, bq3Colour, bq3Eq,
+  { type: "halprops", q: "Which halogen is a reddish-brown liquid at room temperature?", opts: [["Bromine", true], ["Chlorine", "halprops"], ["Iodine", "halprops"], ["Fluorine", "halprops"]], why: "Bromine is the only halogen that is a liquid at room temperature." },
+  { type: "halprops", q: "Chlorine, bromine and iodine are described as…", opts: [["diatomic non-metals", true], ["monatomic non-metals", "diatomic"], ["diatomic metals", "metal"], ["soft, low-density metals", "metal"]], why: "Each is made of two-atom molecules (Cl₂, Br₂, I₂) and is a non-metal." },
+  { type: "trend17", q: "Going down Group 17, which trend is correct?", opts: [["Colour gets darker and melting point increases", true], ["Colour gets lighter and melting point increases", "trend17"], ["Colour gets darker and melting point decreases", "trend17"], ["Reactivity increases", "halreact"]], why: "Down Group 17: darker colour, higher melting/boiling points, lower reactivity." },
+  { type: "halreact", q: "Which mixture will react?", opts: [["Chlorine water + sodium bromide solution", true], ["Iodine solution + potassium chloride solution", "disp"], ["Bromine water + potassium chloride solution", "disp"], ["Iodine solution + sodium bromide solution", "disp"]], why: "Only chlorine is more reactive than the halide it meets (bromide), so only it displaces." },
+  { type: "halreact", q: "Bromine water is added to potassium chloride solution. There is no reaction because…", opts: [["bromine is less reactive than chlorine", true], ["bromine is more reactive than chlorine", "halreact"], ["potassium is more reactive than bromine", "disp"], ["bromine is a liquid", "halprops"]], why: "A halogen can only displace a less reactive halogen. Bromine is below chlorine, so it is less reactive." },
+  { type: "predict", q: "Predict a property of astatine, the halogen below iodine.", opts: [["It is a dark solid that is less reactive than iodine", true], ["It is a pale gas that is more reactive than iodine", "predict"], ["It is a silvery metal", "metal"], ["It exists as single atoms, like a noble gas", "diatomic"]], why: "Down Group 17, colour darkens, melting point rises and reactivity falls." },
+  { type: "disp", pure: true, q: "Which ionic equation shows chlorine displacing bromine?", opts: [["Cl₂ + 2Br⁻ → 2Cl⁻ + Br₂", true], ["Cl₂ + Br⁻ → Cl⁻ + Br₂", "disp"], ["Br₂ + 2Cl⁻ → 2Br⁻ + Cl₂", "disp"], ["Cl + Br⁻ → Cl⁻ + Br", "diatomic"]], why: "Chlorine molecules take electrons from bromide ions. Charges and atoms balance: Cl₂ + 2Br⁻ → 2Cl⁻ + Br₂." },
+  { type: "disp", pure: true, q: "In K⁺, Br⁻ and Cl₂, which particles are spectator ions when chlorine water is added to KBr(aq)?", opts: [["K⁺ ions", true], ["Br⁻ ions", "disp"], ["Cl₂ molecules", "disp"], ["There are none", "disp"]], why: "Potassium ions are unchanged, so they are left out of the ionic equation Cl₂ + 2Br⁻ → 2Cl⁻ + Br₂." }
+];
+BOSS_POOL[3] = { easy: BQ3.filter(function (q) { return !q.pure; }), hard: BQ3 };
+
 /* =================== PIXEL SPRITES (used if an image file is missing) =================== */
 var HERO_MAP = [
   "......kkkkk.....", ".....kHHHHHk....", "....kHHHHHHHk...", "....kHSSSSSHk...", "...kkkkSSkkkk...", "...kGGkSSkGGk...",
@@ -1115,7 +1259,7 @@ function startStage(id, toBoss) {
   G.points = 0; G.t0 = Date.now(); G.log = []; G.attempt = 0; B = null;
   G.s1 = { right: 0, total: 0, bumps: 0, restarts: 0 };
   if (toBoss) return startBoss();
-  if (id === 1) startSnake(); else if (id === 2) startBomb();
+  if (id === 1) startSnake(); else if (id === 2) startBomb(); else if (id === 3) startFight();
 }
 function logAnswer(phase, type, ok, err, text, picked, right) {
   G.log.push({ phase: phase, type: type, ok: ok, err: err, text: text, picked: picked, right: right, attempt: G.attempt });
@@ -1131,8 +1275,9 @@ function loop(t) {
   var dt = Math.min(0.05, (t - lastT) / 1000); lastT = t;
   if (!document.hidden && MODE === "snake") updSnake(dt);
   if (!document.hidden && MODE === "bomb") updBomb(dt);
+  if (!document.hidden && MODE === "fight") updFight(dt);
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) $("c-toast").hidden = true; }
-  if (MODE === "snake") drawSnake(); else if (MODE === "bomb") drawBomb();
+  if (MODE === "snake") drawSnake(); else if (MODE === "bomb") drawBomb(); else if (MODE === "fight") drawFight();
   raf2 = requestAnimationFrame(loop);
 }
 var toastT = 0;
@@ -1148,7 +1293,7 @@ function fit() {
   }
   var tb = document.querySelector(".topbar");
   var others = (getComputedStyle(tb).position === "fixed" ? 0 : tb.offsetHeight) + $("c-hud").offsetHeight + $("c-q").offsetHeight +
-    ($("pad").offsetParent ? $("pad").offsetHeight : 0) + ($("keys").offsetParent ? $("keys").offsetHeight : 0) + padV + 8 * 3 + 6;
+    ($("pad").offsetParent ? $("pad").offsetHeight : 0) + ($("keys").offsetParent ? $("keys").offsetHeight : 0) + ($("c-choices").offsetParent ? $("c-choices").offsetHeight : 0) + padV + 8 * 3 + 6;
   var availH = window.innerHeight - others, availW = wrap.clientWidth - 6;
   sizeCanvas(Math.max(0.4, Math.min(availW / W, availH / H, 1.5)));
 }
@@ -1176,6 +1321,11 @@ document.addEventListener("keydown", function (e) {
   if (!$("scr-boss").hidden) return bossKey(e);
   if ($("scr-play").hidden || !$("c-cover").hidden) return;
   if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+  if (MODE === "fight") {
+    var n = { 1: 0, 2: 1, 3: 2, 4: 3, a: 0, b: 1, c: 2, d: 3, A: 0, B: 1, C: 2, D: 3 }[e.key];
+    if (n != null) { var fb = $("c-choices").querySelectorAll("button[data-fi]")[n]; if (fb && !fb.disabled) { e.preventDefault(); fb.click(); } }
+    return;
+  }
   if (MODE === "bomb" && /^[a-zA-Z]$/.test(e.key)) { e.preventDefault(); if (!e.repeat) typeMetal(e.key.toLowerCase()); return; }
   var k = KEYMAP[e.key]; if (!k) return;
   e.preventDefault(); if (e.repeat) return;
@@ -1184,6 +1334,9 @@ document.addEventListener("keydown", function (e) {
 document.addEventListener("keyup", function (e) { var k = KEYMAP[e.key]; if (k && MODE === "bomb") bombRelease(k); });
 window.addEventListener("blur", function () { if (BX) BX.held = null; });
 function setPad(kind) {
+  var none = kind === "none";
+  $("pad").hidden = none; $("keys").hidden = none; $("c-choices").hidden = !none;
+  if (none) return;
   if (kind === "bomb") {
     $("pad").className = "pad bomb";
     $("pad").innerHTML = '<button type="button" data-k="l" aria-label="Left">◀</button><button type="button" data-k="u" aria-label="Up">▲</button><button type="button" data-k="d" aria-label="Down">▼</button><button type="button" data-k="r" aria-label="Right">▶</button>' +
@@ -1708,6 +1861,225 @@ function drawBomb() {
   }
 }
 
+
+/* =================== STAGE 3: HALOGEN FIGHTER =================== */
+var FX = null;
+function startFight() {
+  MODE = "fight"; show("scr-play"); setPad("none");
+  FX = { ri: 0, hearts: SNAKE_HEARTS, steps: [], i: 0, scene: { kind: "lineup", roster: ["Cl", "Br", "I"] }, unlocked: {}, anim: null, t: 0, parts: [], locked: true };
+  G.s1.ko = 0; G.s1.noreact = 0;
+  paintFightHud();
+  $("c-q").innerHTML = '<p class="qhead">STAGE 3 · HALOGEN FIGHTER</p><p class="qtext">Get ready…</p>'; $("c-choices").innerHTML = "";
+  startLoop(); fit();
+  COVER_ACT.f0 = function () { beginFightRound(0); };
+  cover('<div style="width:96px">' + domArt("halo") + '</div><p class="lvname">STAGE 3 · GROUP 17: HALOGENS</p><h2>HALOGEN FIGHTER</h2>' +
+    '<p class="why">"' + esc(STG.taunt) + '"</p><p class="tagline">— ' + esc(STG.boss) + "</p>" +
+    "<ul><li><b>Round 1:</b> unlock your halogen fighters by their colour and state.</li><li><b>Round 2:</b> send them into displacement fights. A more reactive halogen K.O.s a less reactive one!</li><li><b>Round 3:</b> predict two secret fighters.</li><li>Each wrong answer costs a ♥.</li></ul>" +
+    '<p><b>Laptop:</b> press 1–4 (or A–D) to answer.</p><div class="row"><button class="pbtn" type="button" data-go="f0">START ▶</button></div>');
+}
+function paintFightHud(breakIdx) {
+  $("c-lv").innerHTML = "STAGE 3 · HALOGEN FIGHTER<span>ROUND " + (FX.ri + 1) + "/3 · " + FROUNDS[FX.ri].name + "</span>";
+  $("c-hearts").innerHTML = heartsHTML(FX.hearts, SNAKE_HEARTS, breakIdx);
+  $("c-pts").textContent = G.points;
+}
+function beginFightRound(ri) {
+  FX.ri = ri; FX.hearts = SNAKE_HEARTS; FX.steps = FROUNDS[ri].build(); FX.i = 0; FX.locked = true;
+  if (ri === 0) FX.unlocked = {};
+  if (ri === 2) { delete FX.unlocked.F; delete FX.unlocked.At; }
+  FX.scene = FX.steps[0].scene; paintFightHud(); $("c-choices").innerHTML = "";
+  cover('<p class="lvname">ROUND ' + (ri + 1) + ' OF 3</p><h2>' + FROUNDS[ri].name + '</h2><p class="why">' + FROUNDS[ri].tip + "</p>" +
+    (ri === 1 ? '<div class="eg"><span>Cl₂ + 2KBr → 2KCl + Br₂</span></div><p class="why">Chlorine is more reactive, so it pushes bromine out.</p>' : "") +
+    '<div class="row"><button class="pbtn" type="button" data-go="fgo">' + (ri === 1 ? "FIGHT! ▶" : "GO ▶") + "</button></div>");
+  COVER_ACT.fgo = function () { showStep(); };
+}
+function showStep() {
+  var st = FX.steps[FX.i]; FX.scene = st.scene; FX.anim = null; FX.locked = false;
+  var opts = st.opts.map(function (o) { return { t: o[0], ok: o[1] === true, err: o[1] === true ? null : o[1], sw: o[2] }; });
+  if (st.kind !== "predict") opts = shuffle(opts);
+  FX.opts = opts; FX.right = opts.filter(function (o) { return o.ok; })[0].t;
+  $("c-q").innerHTML = '<p class="qhead">ROUND ' + (FX.ri + 1) + "/3 · " + FROUNDS[FX.ri].name + " · " + (FX.i + 1) + "/" + FX.steps.length + '</p><p class="qtext">' + esc(st.q) + "</p>";
+  var c = $("c-choices"); c.className = "choices" + (opts.length === 2 ? " two" : "");
+  c.innerHTML = opts.map(function (o, i) {
+    return '<button type="button" class="qopt" data-fi="' + i + '"><span class="k">' + "ABCD"[i] + "</span>" + (o.sw ? '<span class="sw" style="background:' + (o.sw === "transparent" ? "repeating-linear-gradient(45deg,#fff 0 3px,transparent 3px 6px)" : o.sw) + '"></span>' : "") + '<span class="tx">' + esc(o.t) + "</span></button>";
+  }).join("");
+  fit();
+}
+$("c-choices").addEventListener("click", function (e) {
+  var nb = e.target.closest("#f-next"); if (nb) { Sound.tap(); nextStep(); return; }
+  var b = e.target.closest("button[data-fi]"); if (!b || FX.locked || b.disabled) return;
+  fightAnswer(+b.dataset.fi);
+});
+function fightAnswer(i) {
+  FX.locked = true;
+  var st = FX.steps[FX.i], o = FX.opts[i], ok = o.ok, sc = st.scene, btns = $("c-choices").querySelectorAll("button[data-fi]");
+  FX.opts.forEach(function (op, j) { btns[j].disabled = true; if (op.ok) btns[j].classList.add("right"); });
+  if (!ok) btns[i].classList.add("wrong");
+  logAnswer("s1", st.type, ok, o.err, st.q, o.t, FX.right);
+  if (st.unlock) FX.unlocked[st.unlock] = 1; // revealed either way, so students see the right answer
+  var res = null;
+  if (st.kind === "predict") { res = reacts(st.hk, st.salt) ? "ko" : "noreact"; }
+  if (st.kind === "pick") res = sc.winners.length ? "ko" : "noreact";
+  if (st.kind === "colour") sc.liquid = HAL[st.salt.x].aqCol;
+  if (ok) {
+    addPoints(100); Sound.hit();
+    if (sc && sc.hp != null) sc.hp = Math.max(0, sc.hp - 1);
+    FX.anim = { kind: st.unlock ? "unlock" : res === "noreact" ? "block" : "atk", t: 0 };
+    if (res === "ko") G.s1.ko++; if (res === "noreact") G.s1.noreact++;
+  } else {
+    FX.anim = { kind: "hurt", t: 0 }; FX.hearts--; Sound.hurt(); paintFightHud(FX.hearts);
+  }
+  if (res) sc.result = res;
+  var msg = '<p class="qfbline"><b class="' + (ok ? "ok" : "no") + '">' + (ok ? pick(["Hit!", "Combo!", "Super!", "Perfect!"]) : esc(ERR[o.err].label) + ".") + "</b> " + (ok ? "" : "Answer: " + esc(FX.right) + ". ") + esc(st.why) + "</p>";
+  $("c-q").insertAdjacentHTML("beforeend", msg);
+  var out = FX.hearts <= 0;
+  $("c-choices").insertAdjacentHTML("beforeend", '<button class="pbtn" type="button" id="f-next">' + (out ? "CONTINUE ▶" : FX.i + 1 < FX.steps.length ? "NEXT ▶" : "FINISH ROUND ▶") + "</button>");
+  fit();
+  setTimeout(function () { var n = $("f-next"); if (n) n.focus({ preventScroll: true }); }, 100);
+}
+function nextStep() {
+  if (FX.hearts <= 0) {
+    G.s1.restarts++;
+    COVER_ACT.fretry = function () { beginFightRound(FX.ri); };
+    cover('<h2 class="red">K.O.!</h2><p>' + esc(STG.boss) + ' knocked you out of this round. Read the tips and try again.</p><div class="row"><button class="pbtn" type="button" data-go="fretry">RETRY ROUND ↻</button></div>');
+    return;
+  }
+  FX.i++;
+  if (FX.i < FX.steps.length) return showStep();
+  Sound.level();
+  var last = FX.ri === FROUNDS.length - 1;
+  COVER_ACT.fnext = function () { if (last) startBoss(); else beginFightRound(FX.ri + 1); };
+  cover(last ? '<div style="width:96px">' + domArt("halo") + '</div><h2>STAGE CLEAR!</h2><p>K.O.s: ' + G.s1.ko + ". Blocks spotted: " + G.s1.noreact + '.</p><p>The ' + esc(STG.boss) + ' steps into the ring!</p><p class="why">Answer before her attack charges up. Each correct answer hits her once.</p><div class="row"><button class="pbtn" type="button" data-go="fnext">FIGHT ▶</button></div>'
+    : '<h2>ROUND CLEAR!</h2><p>' + FROUNDS[FX.ri].name + " done. Points: " + G.points + '.</p><div class="row"><button class="pbtn" type="button" data-go="fnext">NEXT ROUND ▶</button></div>');
+}
+
+/* ---------- drawing ---------- */
+function circ(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); }
+function drawFighter(k, x, y, s, o) {
+  o = o || {}; var h = HAL[k], sil = !!o.sil, col = sil ? "#3A3366" : h.col, t = FX.t, ink = "#0D0B1A";
+  ctx.save();
+  ctx.translate(x + (o.shake ? Math.sin(t * 70) * 4 : 0), y + (h.state === "gas" && !sil ? Math.sin(t * 3 + x) * 4 : 0) - (o.lunge || 0) * 0);
+  ctx.scale(s, s); if (o.flip) ctx.scale(-1, 1);
+  if (o.lunge) ctx.translate(o.lunge, 0);
+  ctx.lineWidth = 4; ctx.strokeStyle = sil ? "#4A4380" : ink; ctx.lineJoin = "round";
+  if (h.aura && !sil) { ctx.fillStyle = "rgba(155,92,255," + (.22 + .08 * Math.sin(t * 4)) + ")"; circ(0, -62, 62 + Math.sin(t * 4) * 4); ctx.fill(); }
+  ctx.fillStyle = col;
+  if (h.state === "gas") { // wispy tail instead of legs
+    ctx.beginPath(); ctx.moveTo(-22, -12); ctx.quadraticCurveTo(-30, 8, -10, 6); ctx.quadraticCurveTo(0, 22, 10, 4); ctx.quadraticCurveTo(30, 10, 22, -12); ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else if (h.state === "liquid") { // drippy legs
+    rr(-20, -14, 16, 16, 7); ctx.fill(); ctx.stroke(); rr(4, -14, 16, 16, 7); ctx.fill(); ctx.stroke();
+    if (!sil) { var dy = (t * 30) % 18; circ(-12, 6 + dy, 4); ctx.fill(); circ(14, 4 + ((dy + 9) % 18), 3); ctx.fill(); }
+  } else { ctx.fillRect(-20, -14, 15, 16); ctx.strokeRect(-20, -14, 15, 16); ctx.fillRect(5, -14, 15, 16); ctx.strokeRect(5, -14, 15, 16); }
+  // body
+  rr(-26, -66, 52, 54, 10); ctx.fill(); ctx.stroke();
+  if (h.state === "solid" && !sil) { ctx.fillStyle = "#4A4A58"; [[-26, -66], [26, -66]].forEach(function (p) { ctx.beginPath(); ctx.moveTo(p[0] - 8, p[1] + 6); ctx.lineTo(p[0], p[1] - 10); ctx.lineTo(p[0] + 8, p[1] + 6); ctx.closePath(); ctx.fill(); ctx.stroke(); }); ctx.fillStyle = col; }
+  // diatomic badge: two atoms joined
+  if (!sil) { ctx.fillStyle = "#fff"; ctx.lineWidth = 3; circ(-7, -40, 8); ctx.fill(); ctx.stroke(); circ(7, -40, 8); ctx.fill(); ctx.stroke(); ctx.fillStyle = ink; ctx.font = "800 8px 'Open Sans', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(hsym(k), -7, -40); ctx.fillText(hsym(k), 7, -40); ctx.lineWidth = 4; }
+  // fists
+  ctx.fillStyle = col; var fx = o.punch ? 52 : 34;
+  circ(fx, -48, 10); ctx.fill(); ctx.stroke(); circ(-34, -42, 10); ctx.fill(); ctx.stroke();
+  // head
+  circ(0, -88, 24); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = sil ? "#4A4380" : "#FF4D5E"; ctx.fillRect(-24, -102, 48, 8); ctx.beginPath(); ctx.moveTo(-24, -100); ctx.lineTo(-38, -94 + Math.sin(t * 8) * 3); ctx.lineTo(-24, -95); ctx.fill();
+  if (sil) { ctx.fillStyle = "#8C86A8"; ctx.font = "800 24px 'Open Sans', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("?", 0, -84); }
+  else if (o.hurt) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; [[-9, -86], [9, -86]].forEach(function (p) { ctx.beginPath(); ctx.moveTo(p[0] - 4, p[1] - 4); ctx.lineTo(p[0] + 4, p[1] + 4); ctx.moveTo(p[0] + 4, p[1] - 4); ctx.lineTo(p[0] - 4, p[1] + 4); ctx.stroke(); }); }
+  else { ctx.fillStyle = "#fff"; ctx.fillRect(-14, -91, 10, 9); ctx.fillRect(4, -91, 10, 9); ctx.fillStyle = ink; ctx.fillRect(-9, -89, 5, 6); ctx.fillRect(9, -89, 5, 6); }
+  ctx.restore();
+}
+function drawBeaker(s, x, y, sc, o) {
+  o = o || {}; var t = FX.t;
+  ctx.save(); ctx.translate(x + (o.shake ? Math.sin(t * 70) * 5 : 0), y); ctx.scale(sc, sc);
+  if (o.ko) ctx.rotate(.18);
+  // liquid
+  var liq = o.liquid || "rgba(180,220,255,.22)";
+  ctx.fillStyle = liq === "transparent" ? "rgba(180,220,255,.22)" : liq;
+  ctx.beginPath(); ctx.moveTo(-40, -70); ctx.lineTo(40, -70); ctx.lineTo(44, -4); ctx.lineTo(-44, -4); ctx.closePath(); ctx.fill();
+  // glass
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-46, -122); ctx.lineTo(-40, -122); ctx.lineTo(-44, -4); ctx.lineTo(44, -4); ctx.lineTo(40, -122); ctx.lineTo(46, -122); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = 2; for (var i = 1; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(28, -4 - i * 26); ctx.lineTo(36, -4 - i * 26); ctx.stroke(); }
+  // face
+  if (o.ko) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; [[-14, -48], [14, -48]].forEach(function (p) { ctx.beginPath(); ctx.moveTo(p[0] - 5, p[1] - 5); ctx.lineTo(p[0] + 5, p[1] + 5); ctx.moveTo(p[0] + 5, p[1] - 5); ctx.lineTo(p[0] - 5, p[1] + 5); ctx.stroke(); });
+    ctx.fillStyle = "#FCE883"; for (i = 0; i < 3; i++) { var a = t * 4 + i * 2.1; ctx.fillRect(Math.cos(a) * 34 - 3, -136 + Math.sin(a) * 8, 6, 6); } }
+  else { ctx.fillStyle = "#fff"; ctx.fillRect(-20, -54, 12, 12); ctx.fillRect(8, -54, 12, 12); ctx.fillStyle = "#0D0B1A"; ctx.fillRect(-18, -50, 6, 7); ctx.fillRect(10, -50, 6, 7);
+    ctx.strokeStyle = "#0D0B1A"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-22, -60); ctx.lineTo(-8, -56); ctx.moveTo(22, -60); ctx.lineTo(8, -56); ctx.stroke(); }
+  if (o.shield) { ctx.strokeStyle = "rgba(46,242,224," + (.5 + .4 * Math.sin(t * 20)) + ")"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, -62, 74, Math.PI * .6, Math.PI * 1.4); ctx.stroke(); }
+  ctx.restore();
+  ctx.fillStyle = "#fff"; ctx.font = "800 15px 'Open Sans', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillText(s.f, x, y + 22);
+}
+function bars(leftName, rightName, hp, max) {
+  ctx.font = "9px 'Press Start 2P', monospace"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#2EF2E0"; ctx.textAlign = "left"; ctx.fillText(leftName, 12, 22);
+  ctx.fillStyle = "#FF7FB0"; ctx.textAlign = "right"; ctx.fillText(rightName, W - 12, 22);
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.strokeRect(12, 30, 160, 14); ctx.strokeRect(W - 172, 30, 160, 14);
+  ctx.fillStyle = "#FCE883"; ctx.fillRect(14, 32, 156 * FX.hearts / SNAKE_HEARTS, 10);
+  ctx.fillStyle = "#FF4D5E"; var w = 156 * (max ? hp / max : 1); ctx.fillRect(W - 14 - w, 32, w, 10);
+  ctx.fillStyle = "#FCE883"; ctx.font = "12px 'Press Start 2P', monospace"; ctx.textAlign = "center"; ctx.fillText("VS", W / 2, 44);
+}
+function banner(txt, col) {
+  ctx.save(); ctx.font = "26px 'Press Start 2P', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = "#0D0B1A"; ctx.fillText(txt, W / 2 + 3, 150 + 3); ctx.fillStyle = col; ctx.fillText(txt, W / 2, 150); ctx.restore();
+}
+function updFight(dt) { FX.t += dt; if (FX.anim) FX.anim.t += dt; FX.parts = FX.parts.filter(function (p) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; return p.t < .7; }); }
+function drawFight() {
+  var sc = FX.scene, a = FX.anim, at = a ? a.t : 0;
+  ctx.fillStyle = "#0D0B1A"; ctx.fillRect(0, 0, W, H);
+  // stage backdrop
+  var g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#2A1450"); g.addColorStop(.75, "#19152E"); g.addColorStop(1, "#0D0B1A"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#2A2448"; ctx.fillRect(0, 430, W, 70); ctx.strokeStyle = "#2EF2E0"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 430); ctx.lineTo(W, 430); ctx.stroke();
+  for (var i = 0; i < W; i += 40) { ctx.strokeStyle = "rgba(46,242,224,.25)"; ctx.beginPath(); ctx.moveTo(i, 430); ctx.lineTo(i - 30, 500); ctx.stroke(); }
+  if (!sc) return;
+  var hurt = a && a.kind === "hurt" && at < .8;
+  if (hurt) { ctx.fillStyle = "rgba(255,77,94," + (.3 * (1 - at / .8)) + ")"; ctx.fillRect(0, 0, W, H); }
+  if (sc.kind === "select") {
+    ctx.fillStyle = "#FCE883"; ctx.font = "13px 'Press Start 2P', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillText("CHOOSE YOUR FIGHTER", W / 2, 32);
+    var n = sc.roster.length, tw = Math.min(70, (W - 24) / n - 6), x0 = W / 2 - (n * (tw + 6) - 6) / 2;
+    sc.roster.forEach(function (k, j) {
+      var tx = x0 + j * (tw + 6), on = FX.unlocked[k] || (FX.ri === 2 && k !== "F" && k !== "At");
+      ctx.fillStyle = k === sc.focus ? "#3A2E6E" : "#19152E"; ctx.fillRect(tx, 46, tw, 74);
+      ctx.strokeStyle = k === sc.focus ? "#FCE883" : "#2EF2E0"; ctx.lineWidth = 3; ctx.strokeRect(tx, 46, tw, 74);
+      ctx.save(); ctx.beginPath(); ctx.rect(tx, 46, tw, 74); ctx.clip(); drawFighter(k, tx + tw / 2, 112, .46, { sil: !on }); ctx.restore();
+      ctx.fillStyle = "#fff"; ctx.font = "800 12px 'Open Sans', sans-serif"; ctx.textAlign = "center"; ctx.fillText(on ? HAL[k].f : "?", tx + tw / 2, 138);
+    });
+    var un = !!FX.unlocked[sc.focus], unlockA = a && a.kind === "unlock" && at < .6;
+    if (unlockA) { ctx.fillStyle = "rgba(252,232,131," + (.5 * (1 - at / .6)) + ")"; circ(W / 2, 330, 120 * at / .6 + 30); ctx.fill(); }
+    drawFighter(sc.focus, W / 2, 425, 1.55, { sil: !un, hurt: hurt });
+    ctx.fillStyle = "#fff"; ctx.font = "800 18px 'Open Sans', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.fillText(un ? HAL[sc.focus].f + " · " + cap(HAL[sc.focus].name) : "???", W / 2, 462);
+    if (un) { ctx.fillStyle = "#FCE883"; ctx.font = "700 14px 'Open Sans', sans-serif"; ctx.fillText(cap(HAL[sc.focus].look), W / 2, 484); }
+  } else if (sc.kind === "lineup") {
+    ctx.fillStyle = "#FCE883"; ctx.font = "12px 'Press Start 2P', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillText("GROUP 17 LINE-UP", W / 2, 32);
+    var m = sc.roster.length, sp = (W - 30) / m;
+    sc.roster.forEach(function (k, j) {
+      var cx = 15 + sp * j + sp / 2, sz = m > 3 ? .62 : .85, cy = 300 + j * (m > 3 ? 22 : 34);
+      drawFighter(k, cx, cy, sz, { hurt: hurt, sil: FX.ri === 2 && (k === "F" || k === "At") && !FX.unlocked[k] });
+      ctx.fillStyle = "#fff"; ctx.font = "800 " + (m > 3 ? 12 : 15) + "px 'Open Sans', sans-serif"; ctx.textAlign = "center"; ctx.fillText(HAL[k].f, cx, cy + 22);
+      ctx.fillStyle = "#B8B2D6"; ctx.font = "700 " + (m > 3 ? 9 : 11) + "px 'Open Sans', sans-serif";
+      var words = HAL[k].look.split(" "); ctx.fillText(words.slice(0, -1).join(" "), cx, cy + 38); ctx.fillText(words[words.length - 1], cx, cy + 51);
+    });
+    ctx.strokeStyle = "#FF8243"; ctx.fillStyle = "#FF8243"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(30, 90); ctx.lineTo(W - 40, 90); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W - 28, 90); ctx.lineTo(W - 42, 82); ctx.lineTo(W - 42, 98); ctx.fill();
+    ctx.font = "800 13px 'Open Sans', sans-serif"; ctx.textAlign = "center"; ctx.fillText(sc.arrow ? "down the group: reactivity decreases" : "down the group: colour darkens, m.p. rises", W / 2, 78);
+  } else {
+    var fighters = sc.kind === "pick" ? ["Cl", "Br", "I"] : [sc.left], winners = sc.kind === "pick" ? sc.winners : (sc.result === "ko" ? [sc.left] : []);
+    bars(sc.kind === "pick" ? "YOUR TEAM" : HAL[sc.left].name.toUpperCase(), sc.salt.nick, sc.hp, sc.max);
+    var atk = a && (a.kind === "atk" || a.kind === "block") && at < 1.2, attackers = a && a.kind === "block" ? fighters : winners.length ? winners : fighters;
+    fighters.forEach(function (k, j) {
+      var fxp = sc.kind === "pick" ? 46 + j * 62 : 110, fyp = sc.kind === "pick" ? 430 - j * 6 : 430, s2 = sc.kind === "pick" ? .82 : 1.3;
+      var isAtk = atk && attackers.indexOf(k) >= 0, lunge = isAtk ? Math.sin(Math.min(1, at / .35) * Math.PI) * 16 : 0;
+      drawFighter(k, fxp, fyp, s2, { punch: isAtk && at < .45, lunge: lunge, hurt: hurt });
+      if (sc.kind === "pick") { ctx.fillStyle = "#fff"; ctx.font = "800 12px 'Open Sans', sans-serif"; ctx.textAlign = "center"; ctx.fillText(HAL[k].f, fxp, 452); }
+      if (isAtk && at > .15 && at < .75) { // energy blast
+        var p = (at - .15) / .6, bx = fxp + 40 + (300 - fxp - 70) * (a.kind === "block" && p > .7 ? (1.4 - p) / .7 * .7 : Math.min(p, 1)), by = 360 - j * 6;
+        ctx.fillStyle = HAL[k].col; circ(bx, by, 14); ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.stroke();
+        ctx.fillStyle = "rgba(255,255,255,.6)"; circ(bx - 18, by, 7); ctx.fill();
+      }
+    });
+    var hitNow = atk && a.kind === "atk" && at > .6 && at < .9;
+    drawBeaker(sc.salt, 300, 430, 1.05, { liquid: sc.liquid, ko: sc.result === "ko" && (!a || a.kind !== "atk" || at > .7), shake: hitNow, shield: a && a.kind === "block" && at > .4 && at < 1.1 });
+    if (sc.result === "ko" && (!a || at > .7)) banner("K.O.!", "#FF4D5E");
+    if (sc.result === "noreact" && (!a || at > .9)) banner("NO REACTION", "#2EF2E0");
+  }
+}
+
 /* =================== BOSS FIGHT =================== */
 var B = null, raf = 0;
 function paintBossSprites() {
@@ -1905,7 +2277,7 @@ function buildPayload(R) {
   var res = B.win ? "cleared" : "not cleared";
   var summary = "Stage " + STG.id + " " + STG.boss + " | Boss attempt " + G.attempt + " (" + res + ") | Level: " + lvName +
     " | Accuracy: " + R.pct + "% | Wrong most: " + most +
-    " | " + STG.game + ": " + G.s1.right + "/" + G.s1.total + (STG.id === 2 ? ", perfect blasts " + G.s1.perfect + ", overkill " + G.s1.overkill + ", too weak " + G.s1.weak + ", hurt " + G.s1.hurt + ", room restarts " : ", self-bumps " + G.s1.bumps + ", round restarts ") + G.s1.restarts +
+    " | " + STG.game + ": " + G.s1.right + "/" + G.s1.total + (STG.id === 3 ? ", K.O.s " + G.s1.ko + ", no-reactions spotted " + G.s1.noreact + ", round restarts " : STG.id === 2 ? ", perfect blasts " + G.s1.perfect + ", overkill " + G.s1.overkill + ", too weak " + G.s1.weak + ", hurt " + G.s1.hurt + ", room restarts " : ", self-bumps " + G.s1.bumps + ", round restarts ") + G.s1.restarts +
     " | Boss: hits " + B.correct + "/" + B.n + " (needed " + B.maxhp + "), best combo " + B.bestCombo + (B.used.length ? ", powers used " + B.used.join(", ") : "") +
     " | By topic: " + types + " | Errors: " + errs;
   var wrong = R.log.filter(function (x) { return !x.ok; }).map(function (x) {
@@ -1954,7 +2326,7 @@ var Confetti = {
   stop: function () { this.on = false; this.c.hidden = true; }
 };
 
-if (/debug/.test(location.hash)) window.__PP = { G: G, S: function () { return S; }, B: function () { return B; }, EL: EL, BQ1: BQ1, placeQs: placeQs, pickPrompts: pickPrompts, startBoss: startBoss, startStage: startStage, eat: eat, BX: function () { return BX; }, dropMetal: dropMetal, tryMove: tryMove, seqPrompts: seqPrompts, BQ2: BQ2, steer: steer, buildPayload: buildPayload, finish: finish };
+if (/debug/.test(location.hash)) window.__PP = { G: G, S: function () { return S; }, B: function () { return B; }, EL: EL, BQ1: BQ1, placeQs: placeQs, pickPrompts: pickPrompts, startBoss: startBoss, startStage: startStage, eat: eat, BX: function () { return BX; }, dropMetal: dropMetal, tryMove: tryMove, seqPrompts: seqPrompts, BQ2: BQ2, BQ3: BQ3, FX: function () { return FX; }, f2Steps: f2Steps, steer: steer, buildPayload: buildPayload, finish: finish };
 
 })();
 </script>
