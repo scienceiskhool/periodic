@@ -2082,7 +2082,9 @@ function drawSheetFighter(k, x, y, s, o) {
   var bob = HAL[k].state === "gas" && !o.sil ? Math.sin(t * 3 + x) * 4 : 0;
   var dx = x - w / 2 + (o.lunge || 0) * s + (row === 1 ? w * .16 : 0) + (o.shake || o.hurt ? Math.sin(t * 70) * 3 : 0);
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(o.sil ? HSHEET.sil : HSHEET.img, col * HSHEET.cw, row * HSHEET.ch, HSHEET.cw, HSHEET.ch, dx, y - h + 12 * s + bob, w, h);
+  // attack frames: trim a thin strip on the left, where the previous fighter's blast can spill into this cell
+  var trim = row === 1 ? .08 : 0;
+  ctx.drawImage(o.sil ? HSHEET.sil : HSHEET.img, col * HSHEET.cw + HSHEET.cw * trim, row * HSHEET.ch, HSHEET.cw * (1 - trim), HSHEET.ch, dx + w * trim, y - h + 12 * s + bob, w * (1 - trim), h);
   if (o.sil) { ctx.fillStyle = "#8C86A8"; ctx.font = "800 " + Math.round(34 * s) + "px 'Open Sans', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("?", x, y - h * .55); }
   ctx.restore();
 }
