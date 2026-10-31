@@ -740,8 +740,8 @@ var ERR = {
   charge: { label: "Ion charge mix-up", tip: "Metals lose their valence electrons to form positive ions (Group 1 → 1+, 2 → 2+, 13 → 3+). Non-metals gain electrons to fill the outer shell (Group 15 → 3−, 16 → 2−, 17 → 1−)." },
   sequence: { label: "Wrong order", tip: "Going down a group, proton number increases (e.g. F → Cl → Br → I). Across a period from left to right, it goes up by one each time (e.g. Na → Mg → Al → Si)." },
   amph: { label: "Amphoteric oxide mix-up", tip: "Aluminium oxide, zinc oxide and lead(II) oxide are amphoteric: they react with both acids and alkalis. Oxides of Group 1 and Group 2 metals are basic." },
-  weak: { label: "Metal not reactive enough", tip: "Reactivity with water increases down Group 1: lithium < sodium < potassium." },
-  overkill: { label: "Used a more reactive metal than needed", tip: "Reactivity increases down Group 1: lithium < sodium < potassium. Pick the least reactive metal that does the job." },
+  weak: { label: "Metal not reactive enough", tip: "Reactivity with water increases down Group 1: lithium < sodium < potassium. More reactive metals blast harder and further (Li 1, Na 2, K 3 squares)." },
+  overkill: { label: "Used a more reactive metal than needed", tip: "Reactivity increases down Group 1: lithium < sodium < potassium. Pick the least reactive metal that is strong enough and reaches the wall." },
   observe: { label: "Observation mix-up", tip: "All three float and fizz (hydrogen). Lithium fizzes steadily; sodium melts into a silvery ball and darts about; potassium also bursts into a lilac flame." },
   props: { label: "Physical property mix-up", tip: "Group 1 metals are soft (cut with a knife) and have low densities (they float on water). Melting point decreases down the group." },
   products: { label: "Products mix-up", tip: "Group 1 metal + water → metal hydroxide + hydrogen. The hydroxide makes the solution alkaline." },
@@ -918,7 +918,8 @@ var BOSS_POOL = {
 };
 
 /* =================== STAGE 2 CONTENT: ALKALI BLAST =================== */
-var FUSE_SECS = 2.2;                      // Alkali Blast: seconds between dropping a metal and the blast
+var FUSE_SECS = 2.2;
+var ROOM_SIZES = [[8, 10], [10, 12], [12, 15]]; // Alkali Blast grid (columns × rows) for rooms 1–3: finer each room                      // Alkali Blast: seconds between dropping a metal and the blast
 var MET = {
   Li: { p: 1, name: "lithium", col: "#2EF2E0", obs: "Lithium floats and fizzes steadily, moving about slowly." },
   Na: { p: 2, name: "sodium", col: "#FCE883", obs: "Sodium floats, melts into a silvery ball and darts about, fizzing rapidly." },
@@ -1707,36 +1708,50 @@ function paintBombHud(breakIdx) {
   $("c-pts").textContent = G.points;
 }
 function makeRoom(ri) {
-  // 8 × 10 grid. Rows 2, 4 and 6 are barriers, each with one breakable wall and a puddle just below it.
-  var str = ri === 0 ? [3, 2, 1] : shuffle([1, 2, 3]), g = [], cols = [];
-  for (var y = 0; y < ROWS; y++) { g.push([]); for (var x = 0; x < COLS; x++) g[y].push(x === 0 || x === COLS - 1 || y === 0 || y === ROWS - 1 ? "#" : "."); }
-  [2, 4, 6].forEach(function (r, i) {
-    for (var x = 1; x < COLS - 1; x++) g[r][x] = "#";
-    var c; do { c = rint(1, COLS - 2); } while (i && c === cols[i - 1]);
-    cols.push(c); g[r][c] = str[i]; g[r + 1][c] = "~";
+  // Each room is a finer grid (see ROOM_SIZES). Barrier rows each hold one breakable wall, with a puddle in line below it
+  // (close enough for the right metal to reach), plus extra random puddles for long-range blasts.
+  var C = ROOM_SIZES[ri][0], R = ROOM_SIZES[ri][1], g = [], cols = [], bars = [], gap = ri === 0 ? 2 : 3;
+  BX.C = C; BX.R = R;
+  for (var y = 0; y < R; y++) { g.push([]); for (var x = 0; x < C; x++) g[y].push(x === 0 || x === C - 1 || y === 0 || y === R - 1 ? "#" : "."); }
+  for (var r = 2; r <= R - 4; r += gap) bars.push(r);
+  var str = ri === 0 ? [3, 2, 1] : shuffle([1, 2, 3]); while (str.length < bars.length) str.splice(rint(0, str.length), 0, rint(1, 3));
+  bars.forEach(function (r, i) {
+    for (var x = 1; x < C - 1; x++) g[r][x] = "#";
+    var c; do { c = rint(1, C - 2); } while (i && c === cols[i - 1]);
+    cols.push(c); g[r][c] = str[i];
+    var d = ri === 0 ? 1 : rint(1, Math.min(str[i], gap - 1));
+    g[r + d][c] = "~";
   });
-  g[1][rint(1, COLS - 2)] = "D";
-  var px; do { px = rint(1, COLS - 2); } while (g[8][px] !== ".");
-  BX.g = g; BX.px = px; BX.py = 8; BX.dx = px; BX.dy = 8; BX.bomb = null; BX.blasts = []; BX.held = null; BX.rep = 0; BX.inv = 0; BX.face = 1;
+  g[1][rint(1, C - 2)] = "D";
+  var startRow = R - 2, px; do { px = rint(1, C - 2); } while (g[startRow][px] !== ".");
+  // extra puddles anywhere open (not the door row, not the start square)
+  var extra = [0, 3, 5][ri], tries = 0;
+  while (extra > 0 && tries++ < 200) {
+    var ex = rint(1, C - 2), ey = rint(2, R - 2);
+    if (g[ey][ex] === "." && !(ey === startRow && ex === px)) { g[ey][ex] = "~"; extra--; }
+  }
+  BX.g = g; BX.px = px; BX.py = startRow; BX.dx = px; BX.dy = startRow; BX.bomb = null; BX.blasts = []; BX.held = null; BX.rep = 0; BX.inv = 0; BX.face = 1;
   BX.sparks = [];
-  for (var n = 0; n < ri; n++) { // sparks: 1 in room 2, 2 in room 3
-    var rows = [3, 5, 7], rr2 = rows[n % 3], sx; do { sx = rint(1, COLS - 2); } while (g[rr2][sx] !== "." || (rr2 === 7 && Math.abs(sx - px) < 2));
-    BX.sparks.push({ x: sx, y: rr2, t: Math.random() * .5 });
+  var nSparks = [0, 1, 3][ri];
+  for (var n = 0; n < nSparks; n++) {
+    var sy = bars[n % bars.length] + 1, sx, t2 = 0;
+    do { sx = rint(1, C - 2); } while (g[sy][sx] !== "." && t2++ < 50);
+    BX.sparks.push({ x: sx, y: sy, t: Math.random() * .5 });
   }
 }
 function beginRoom(ri) {
   BX.ri = ri; BX.hearts = SNAKE_HEARTS; makeRoom(ri); paintBombHud();
   var intro = ri === 0
     ? '<p class="why">Reactivity with water increases <b>down</b> Group 1:</p><div class="eg"><span>Li</span><span>&lt;</span><span>Na</span><span>&lt;</span><span>K</span></div><div class="walls"><span style="color:#E0A27A">CLAY ▮</span><span style="color:#FF8A7A">BRICK ▮▮</span><span style="color:#C9D2DE">STEEL ▮▮▮</span></div><p class="why">Weakest wall: least reactive metal. Strongest wall: most reactive metal. More reactive metals blast further (Li 1, Na 2, K 3 squares), so run out of the shaded zone!</p><p class="why">Laptop: type <b>Li</b>, <b>Na</b> or <b>K</b> (or click the buttons) to drop a metal.</p>'
-    : ri === 1 ? '<p class="why">The walls are in a new order, and a spark is on the loose. Touching it costs a ♥, but a blast destroys it.</p>'
-    : '<p class="why">Last room! Two sparks. Beyond the door is the final question, then Blaze Alkali.</p>';
+    : ri === 1 ? '<p class="why">A bigger lab with extra puddles! You can now blast from further away, but the metal must be <b>strong enough</b> for the wall <b>and reach</b> it:</p><div class="eg"><span>Li · 1 square</span><span>Na · 2 squares</span><span>K · 3 squares</span></div><p class="why">Use the least reactive metal that does both. A spark is loose: touching it costs a ♥, but a blast destroys it.</p>'
+    : '<p class="why">The biggest lab: more walls, more puddles and three sparks. Blast sparks from a safe puddle! Beyond the door is the final question, then Blaze Alkali.</p>';
   cover('<p class="lvname">ROOM ' + (ri + 1) + ' OF 3</p><h2>' + ["THE CLAY LAB", "THE BRICK LAB", "THE STEEL LAB"][ri] + "</h2>" + intro + '<div class="row"><button class="pbtn" type="button" data-go="bgo">GO ▶</button></div>');
   COVER_ACT.bgo = function () { BX.run = true; BX.ready = 0.8; paintBombQ(); };
 }
 function paintBombQ(extra) {
   $("c-q").innerHTML = '<p class="qhead">ROOM ' + (BX.ri + 1) + "/3 · BREAK THROUGH TO THE DOOR</p>" +
-    '<p class="qtext">Stand on a <b>puddle</b>, drop the <b>least reactive</b> metal that breaks the wall, then step away!</p>' +
-    '<p class="qhint">' + (extra || "CLAY ▮ · BRICK ▮▮ · STEEL ▮▮▮") + "</p>";
+    '<p class="qtext">Stand on a <b>puddle</b>, drop the <b>least reactive</b> metal that breaks the wall' + (BX.ri ? " and reaches it" : "") + ', then step away!</p>' +
+    '<p class="qhint">' + (extra || "CLAY ▮ · BRICK ▮▮ · STEEL ▮▮▮" + (BX.ri ? " · reach: Li 1 · Na 2 · K 3" : "")) + "</p>";
   fit();
 }
 function cellAt(x, y) { return BX.g[y] && BX.g[y][x]; }
@@ -1783,20 +1798,34 @@ function blastCells(x, y, r) {
   return out;
 }
 function explode() {
-  var b = BX.bomb, M = MET[b.m], cells = blastCells(b.x, b.y, M.p), wall = null; BX.bomb = null;
-  cells.forEach(function (c) { var v = cellAt(c[0], c[1]); if (typeof v === "number") wall = { x: c[0], y: c[1], s: v }; });
+  var b = BX.bomb, M = MET[b.m], cells = blastCells(b.x, b.y, M.p); BX.bomb = null;
+  // walls in line with the puddle (up to 3 squares, unblocked): in reach or just out of reach
+  var hits = [], far = null;
+  [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+    for (var i = 1; i <= 3; i++) {
+      var cx = b.x + d[0] * i, cy = b.y + d[1] * i, v = cellAt(cx, cy);
+      if (v === undefined || v === "#") break;
+      if (typeof v === "number") { if (i <= M.p) hits.push({ x: cx, y: cy, s: v, d: i }); else if (!far) far = { x: cx, y: cy, s: v, d: i }; break; }
+    }
+  });
   BX.blasts.push({ cells: cells, t: 0, col: M.col });
   Sound.smash();
   cells.forEach(function (c) { for (var i = 0; i < 5; i++) BX.parts.push({ x: c[0] * CELL + CELL / 2, y: c[1] * CELL + CELL / 2, vx: (Math.random() - .5) * 200, vy: -Math.random() * 180, t: 0, c: pick([M.col, "#fff", "#2F7BFF"]) }); });
   // sparks caught in the blast
   BX.sparks = BX.sparks.filter(function (s) { var hit = cells.some(function (c) { return c[0] === s.x && c[1] === s.y; }); if (hit) { addPoints(50); toast("<b>Spark destroyed!</b> +50", false, 1.4); } return !hit; });
-  if (wall) {
-    var text = "Which metal breaks a " + WALL_NAME[wall.s].toLowerCase() + " wall (" + "▮▮▮".slice(0, wall.s) + ")?", right = ["Li", "Na", "K"][wall.s - 1];
-    if (M.p >= wall.s) BX.g[wall.y][wall.x] = ".";
-    if (M.p === wall.s) { G.s1.perfect++; addPoints(100); logAnswer("s1", "react", true, null, text, b.m, right); toast("<b>Perfect!</b> " + M.obs + " Just enough to break the " + WALL_NAME[wall.s].toLowerCase() + " wall.", false, 3.2); }
-    else if (M.p > wall.s) { G.s1.overkill++; addPoints(20); logAnswer("s1", "react", false, "overkill", text, b.m, right); toast("<b>Overkill!</b> " + M.obs + " " + cap(M.name) + " is more reactive than this wall needs. Try " + MET[right].name + ".", true, 4.5); }
-    else { G.s1.weak++; logAnswer("s1", "react", false, "weak", text, b.m, right); toast("<b>Not reactive enough!</b> " + M.obs + " The " + WALL_NAME[wall.s].toLowerCase() + " wall needs a more reactive metal. Li &lt; Na &lt; K.", true, 4.5); Sound.bad(); }
-  } else toast(M.obs, false, 2.4);
+  function sq(n) { return n + " square" + (n === 1 ? "" : "s"); }
+  function judge(w, reached) {
+    var need = Math.max(w.s, w.d), right = ["Li", "Na", "K"][need - 1], wn = WALL_NAME[w.s].toLowerCase();
+    var text = "Which metal breaks a " + wn + " wall (" + "▮▮▮".slice(0, w.s) + ") " + sq(w.d) + " from the puddle?";
+    if (!reached) { G.s1.weak++; logAnswer("s1", "react", false, "weak", text, b.m, right); toast("<b>Didn't reach!</b> " + M.obs + " " + cap(M.name) + " only blasts " + sq(M.p) + ". The wall is " + sq(w.d) + " away, so you need " + MET[right].name + ".", true, 4.5); Sound.bad(); return; }
+    if (M.p >= w.s) BX.g[w.y][w.x] = ".";
+    if (M.p === need) { G.s1.perfect++; addPoints(100); logAnswer("s1", "react", true, null, text, b.m, right); toast("<b>Perfect!</b> " + M.obs + " Just enough to break the " + wn + " wall" + (w.d > 1 ? " from " + sq(w.d) + " away" : "") + ".", false, 3.2); }
+    else if (M.p > need) { G.s1.overkill++; addPoints(20); logAnswer("s1", "react", false, "overkill", text, b.m, right); toast("<b>Overkill!</b> " + M.obs + " " + cap(M.name) + " is more reactive than needed. " + cap(MET[right].name) + " would break this " + wn + " wall from here.", true, 4.5); }
+    else { G.s1.weak++; logAnswer("s1", "react", false, "weak", text, b.m, right); toast("<b>Not reactive enough!</b> " + M.obs + " The " + wn + " wall needs a more reactive metal. Li &lt; Na &lt; K.", true, 4.5); Sound.bad(); }
+  }
+  if (hits.length) hits.forEach(function (w) { judge(w, true); });
+  else if (far) judge(far, false);
+  else toast(M.obs, false, 2.4);
   if (BX.inv <= 0 && cells.some(function (c) { return c[0] === BX.px && c[1] === BX.py; })) {
     setTimeout(function () { toast("<b>Too close!</b> Get out of the shaded zone before it goes off. Tip: step out of the puddle's row and column.", true, 3); }, 50);
     hurtPlayer();
@@ -1882,7 +1911,10 @@ function drawWall(x, y, s, cracked) {
 function drawBomb() {
   var g = BX.g, t = performance.now() / 1000;
   ctx.fillStyle = "#0D0B1A"; ctx.fillRect(0, 0, W, H);
-  for (var y = 0; y < ROWS; y++) for (var x = 0; x < COLS; x++) {
+  // finer rooms are drawn in the same 50-unit grid, scaled down to fit the screen
+  var k = Math.min(W / (BX.C * CELL), H / (BX.R * CELL));
+  ctx.save(); ctx.translate((W - BX.C * CELL * k) / 2, (H - BX.R * CELL * k) / 2); ctx.scale(k, k);
+  for (var y = 0; y < BX.R; y++) for (var x = 0; x < BX.C; x++) {
     var c = g[y][x], px = x * CELL, py = y * CELL;
     ctx.fillStyle = (x + y) % 2 ? "#19152E" : "#1E1938"; ctx.fillRect(px, py, CELL, CELL);
     if (c === "#") { ctx.fillStyle = "#2A2448"; ctx.fillRect(px, py, CELL, CELL); ctx.strokeStyle = "#3A3366"; ctx.lineWidth = 2; ctx.strokeRect(px + 3, py + 3, CELL - 6, CELL - 6); ctx.fillStyle = "#3A3366"; ctx.fillRect(px + 8, py + 8, 8, 8); }
@@ -1932,6 +1964,7 @@ function drawBomb() {
     ctx.drawImage(hs.el, -hw / 2, -hh, hw, hh); ctx.restore();
   }
   BX.parts.forEach(function (p) { ctx.globalAlpha = 1 - p.t / .7; ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 5, 5); }); ctx.globalAlpha = 1;
+  ctx.restore();
   if (BX.run && BX.ready > 0) {
     ctx.fillStyle = "rgba(13,11,26,.55)"; ctx.fillRect(0, H / 2 - 40, W, 80);
     ctx.fillStyle = "#FCE883"; ctx.font = "20px 'Press Start 2P', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
